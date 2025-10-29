@@ -212,3 +212,77 @@ export const scrollToElement = (elementId: string, delay: number = 100): void =>
     }
   }, delay);
 };
+
+/**
+ * 🎭 Конвертировать ID жанров TMDB в названия
+ * 
+ * 🔄 Как работает:
+ * 1. Получает массив genre_ids от TMDB (например: [28, 12, 16])
+ * 2. Использует маппинг ID → название жанра
+ * 3. Возвращает массив строк с названиями жанров
+ * 
+ * 📋 Маппинг основан на официальных ID жанров TMDB:
+ * - 28: Action
+ * - 12: Adventure
+ * - 16: Animation
+ * - 35: Comedy
+ * - 80: Crime
+ * - 99: Documentary
+ * - 18: Drama
+ * - 10751: Family
+ * - 14: Fantasy
+ * - 36: History
+ * - 27: Horror
+ * - 10402: Music
+ * - 9648: Mystery
+ * - 10749: Romance
+ * - 878: Science Fiction
+ * - 10770: TV Movie
+ * - 53: Thriller
+ * - 10752: War
+ * - 37: Western
+ * 
+ * 💡 Используется для:
+ * - Отображения жанров в рекомендациях
+ * - Фильтрации по жанрам
+ * - Статистики по жанрам
+ * 
+ * @param genreIds - Массив ID жанров от TMDB (например: [28, 12])
+ * @param maxGenres - Максимальное количество жанров для возврата (по умолчанию 2)
+ * @returns Массив названий жанров (например: ["Action", "Adventure"])
+ */
+export const getGenresFromIds = (genreIds: number[] | undefined, maxGenres: number = 2): string[] => {
+  if (!genreIds || !Array.isArray(genreIds) || genreIds.length === 0) {
+    return [];
+  }
+
+  // Маппинг ID жанров TMDB на названия (английские, можно локализовать позже)
+  const genreMap: { [key: number]: string } = {
+    28: 'Action',
+    12: 'Adventure',
+    16: 'Animation',
+    35: 'Comedy',
+    80: 'Crime',
+    99: 'Documentary',
+    18: 'Drama',
+    10751: 'Family',
+    14: 'Fantasy',
+    36: 'History',
+    27: 'Horror',
+    10402: 'Music',
+    9648: 'Mystery',
+    10749: 'Romance',
+    878: 'Science Fiction',
+    10770: 'TV Movie',
+    53: 'Thriller',
+    10752: 'War',
+    37: 'Western'
+  };
+
+  const genres = genreIds
+    .map(id => genreMap[id])
+    .filter(genre => genre !== undefined) // Убираем неизвестные жанры
+    .slice(0, maxGenres); // Берем только первые maxGenres
+
+  return genres;
+};

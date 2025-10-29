@@ -43,14 +43,55 @@ export const MovieDetails: React.FC = () => {
       staleTime: 0,
       cacheTime: 5 * 60 * 1000,
       onSuccess: (data) => {
-        // Загружаем данные фильма в хук формы
-        movieForm.loadFormData({
-          userRating: data.user_rating || 5,
-          notes: data.notes || '',
-          watchedDate: data.watched_date || '',
-          emotions: data.emotions || [],
-          emotionDescription: '' // TODO: добавить поле в базу если нужно
+        // Загружаем данные ТОЛЬКО при первой загрузке (когда prevValuesRef пустой)
+        // После сохранения НЕ перезаписываем состояние формы, чтобы не потерять изменения
+        const emotionsFromServer = data.emotions || [];
+        
+        // Убеждаемся, что эмоции в правильном формате [{type: string}, ...]
+        const normalizedEmotions = emotionsFromServer.map((e: any) => ({
+          type: typeof e === 'string' ? e : (e.type || e.emotion_type || '')
+        })).filter((e: any) => e.type); // Убираем пустые
+        
+        console.log('📥 onSuccess - received data:', {
+          rawEmotions: emotionsFromServer,
+          normalizedEmotions: normalizedEmotions,
+          emotionsCount: normalizedEmotions.length,
+          hasPrevValues: !!prevValuesRef.current
         });
+        
+        if (!prevValuesRef.current) {
+          // Первая загрузка - загружаем все данные с сервера
+          console.log('📥 First load - loading movie data from server');
+          console.log('📥 Normalized emotions:', normalizedEmotions);
+          console.log('📥 Emotions count:', normalizedEmotions.length);
+          
+          // ВАЖНО: загружаем эмоции СРАЗУ, не ждем
+          movieForm.loadFormData({
+            userRating: data.user_rating || 5,
+            notes: data.notes || '',
+            watchedDate: data.watched_date || '',
+            emotions: normalizedEmotions.length > 0 ? normalizedEmotions : [], // Всегда передаем массив, даже пустой
+            emotionDescription: ''
+          });
+          
+          // Проверяем, что эмоции установились (с небольшой задержкой для React)
+          setTimeout(() => {
+            console.log('📥 After loadFormData - current form emotions:', movieForm.emotions.map((e: any) => e.type || e));
+          }, 100);
+          
+          prevValuesRef.current = {
+            userRating: data.user_rating || 5,
+            notes: data.notes || '',
+            watchedDate: data.watched_date || '',
+            emotions: normalizedEmotions.map((e: any) => ({ ...e }))
+          };
+          
+          console.log('✅ Form initialized with emotions:', prevValuesRef.current.emotions.map((e: any) => e.type));
+        } else {
+          // Данные уже загружены - НЕ перезаписываем состояние формы
+          // Это предотвращает сброс изменений пользователя при перезагрузке данных
+          console.log('📥 Data reloaded but keeping current form state. Current emotions:', movieForm.emotions.map(e => e.type));
+        }
       }
     }
   );
@@ -113,8 +154,6 @@ export const MovieDetails: React.FC = () => {
     }
   );
 
-  // 😊 ОБРАБОТЧИКИ ЭМОЦИЙ теперь в хуке useMovieForm
-
   // Сохраняем предыдущие значения для сравнения
   const prevValuesRef = React.useRef<any>(null);
 
@@ -126,6 +165,15 @@ export const MovieDetails: React.FC = () => {
       // Проверяем, изменилось ли что-то
       const currentEmotions = movieForm.emotions.map(e => e.type).sort().join(',');
       const prevEmotions = prevValuesRef.current?.emotions?.map((e: any) => e.type).sort().join(',') || '';
+      
+      console.log('🔍 Checking for changes:', {
+        userRating: prevValuesRef.current?.userRating !== movieForm.userRating,
+        notes: prevValuesRef.current?.notes !== movieForm.notes,
+        watchedDate: prevValuesRef.current?.watchedDate !== movieForm.watchedDate,
+        emotions: currentEmotions !== prevEmotions,
+        currentEmotions,
+        prevEmotions
+      });
       
       const hasChanges = 
         prevValuesRef.current?.userRating !== movieForm.userRating ||
@@ -162,49 +210,120 @@ export const MovieDetails: React.FC = () => {
       // ШАГ 3: Добавляем новые эмоции
       if (movieForm.emotions.length > 0) {
         console.log('😊 Adding new emotions:', movieForm.emotions.map(e => e.type));
-        for (const emotion of movieForm.emotions) {
-          try {
-            await addEmotionMutation.mutateAsync({
-              movie_id: parseInt(id),
-              emotion_type: emotion.type,
-              intensity: 5, // По умолчанию
-              description: movieForm.emotionDescription || null,
-            });
-          } catch (err) {
+        const emotionPromises = movieForm.emotions.map(emotion => 
+          addEmotionMutation.mutateAsync({
+            movie_id: parseInt(id),
+            emotion_type: emotion.type,
+            intensity: 5, // По умолчанию
+            description: movieForm.emotionDescription || null,
+          }).catch(err => {
             console.error('Failed to add emotion:', emotion.type, err);
-          }
-        }
+            throw err;
+          })
+        );
+        
+        // Ждем завершения всех операций сохранения эмоций
+        await Promise.all(emotionPromises);
+        console.log('✅ All emotions saved successfully');
+      } else {
+        console.log('ℹ️ No emotions to save');
       }
 
-      // Сохраняем текущие значения для следующего сравнения
+      // ВАЖНО: Сохраняем текущие значения ДО инвалидации кэша
+      // Это предотвратит перезагрузку данных и сброс состояния
       prevValuesRef.current = {
         userRating: movieForm.userRating,
         notes: movieForm.notes,
         watchedDate: movieForm.watchedDate,
-        emotions: [...movieForm.emotions]
+        emotions: movieForm.emotions.map(e => ({ ...e })) // Глубокое копирование
       };
 
       console.log('✅ Movie and emotions saved successfully');
+      console.log('💾 Updated prevValuesRef:', prevValuesRef.current);
 
-      // Инвалидируем кэш для обновления списка
-      queryClient.invalidateQueries(['movie', id]);
+      // НЕ инвалидируем кэш для текущего фильма - это вызовет перезагрузку и сброс формы
+      // Инвалидируем только список фильмов (для других страниц)
       queryClient.invalidateQueries('movies');
     } catch (error) {
       console.error('❌ Failed to save movie and emotions:', error);
     }
   }, [id, movie, movieForm.userRating, movieForm.notes, movieForm.emotions, movieForm.emotionDescription, movieForm.watchedDate, updateMovieMutation, deleteEmotionsMutation, addEmotionMutation, queryClient]);
 
-  // Инициализируем prevValuesRef когда загружаются данные фильма
-  useEffect(() => {
-    if (movie && !prevValuesRef.current) {
-      prevValuesRef.current = {
-        userRating: movie.user_rating,
-        notes: movie.notes,
-        watchedDate: movie.watched_date,
-        emotions: movie.emotions || []
-      };
-    }
-  }, [movie]);
+  // 😊 ОБРАБОТЧИК КЛИКА ПО ЭМОЦИИ С НЕМЕДЛЕННЫМ СОХРАНЕНИЕМ
+  // При клике на эмодзи сразу сохраняем (без debounce)
+  const handleEmotionClickWithSave = React.useCallback(async (emotion: string) => {
+    if (!id || !movie || !prevValuesRef.current) return;
+    
+    // Вычисляем новые эмоции ДО обновления состояния
+    const isSelected = movieForm.emotions.some(e => e.type === emotion);
+    const newEmotions = isSelected 
+      ? movieForm.emotions.filter(e => e.type !== emotion)
+      : [...movieForm.emotions, { type: emotion }];
+    
+    // Обновляем состояние
+    movieForm.handleEmotionClick(emotion);
+    
+    // Сразу сохраняем с новыми эмоциями (не ждем обновления состояния React)
+    setTimeout(async () => {
+      try {
+        // Принудительно обновляем prevValuesRef для сравнения
+        const currentEmotions = newEmotions.map(e => e.type).sort().join(',');
+        const prevEmotions = prevValuesRef.current?.emotions?.map((e: any) => e.type).sort().join(',') || '';
+        
+        if (currentEmotions === prevEmotions) {
+          console.log('⏭️ Emotion click: no actual change detected');
+          return;
+        }
+
+        console.log('😊 Emotion clicked - saving immediately:', {
+          emotion,
+          action: isSelected ? 'removed' : 'added',
+          newEmotions: newEmotions.map(e => e.type)
+        });
+
+        // ШАГ 1: Обновляем основные данные фильма
+        await updateMovieMutation.mutateAsync({
+          user_rating: movieForm.userRating,
+          notes: movieForm.notes || null,
+          watched_date: movieForm.watchedDate,
+        });
+
+        // ШАГ 2: Удаляем старые эмоции
+        await deleteEmotionsMutation.mutateAsync(id);
+
+        // ШАГ 3: Добавляем новые эмоции
+        if (newEmotions.length > 0) {
+          await Promise.all(newEmotions.map(emotion => 
+            addEmotionMutation.mutateAsync({
+              movie_id: parseInt(id),
+              emotion_type: emotion.type,
+              intensity: 5,
+              description: movieForm.emotionDescription || null,
+            })
+          ));
+        }
+
+        // Обновляем prevValuesRef сразу же
+        prevValuesRef.current = {
+          userRating: movieForm.userRating,
+          notes: movieForm.notes,
+          watchedDate: movieForm.watchedDate,
+          emotions: newEmotions.map(e => ({ ...e }))
+        };
+
+        console.log('✅ Emotion saved immediately');
+        
+        // НЕ инвалидируем кэш сразу - это вызовет перезагрузку данных и сброс состояния
+        // Вместо этого инвалидируем только список фильмов (для других страниц)
+        queryClient.invalidateQueries('movies');
+      } catch (error) {
+        console.error('❌ Failed to save emotion:', error);
+      }
+    }, 50); // Минимальная задержка для обновления UI
+  }, [id, movie, movieForm, updateMovieMutation, deleteEmotionsMutation, addEmotionMutation, queryClient]);
+
+  // УБРАЛИ этот useEffect - инициализация теперь происходит только в onSuccess
+  // Это гарантирует, что эмоции загружаются правильно из базы данных
 
   // Auto-save on change (with debounce) - только если данные фильма загружены
   useEffect(() => {
@@ -330,7 +449,7 @@ export const MovieDetails: React.FC = () => {
           onRatingChange={movieForm.setUserRating}
           onNotesChange={movieForm.setNotes}
           onWatchedDateChange={movieForm.setWatchedDate}
-          onEmotionClick={movieForm.handleEmotionClick}
+          onEmotionClick={handleEmotionClickWithSave}
           onRemoveEmotion={movieForm.handleRemoveEmotion}
           onEmotionDescriptionChange={movieForm.setEmotionDescription}
           showDateFirst={false}

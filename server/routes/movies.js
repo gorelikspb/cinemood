@@ -24,6 +24,18 @@ router.get('/popular', async (req, res) => {
     const count = 12; // Количество фильмов (можно передать через query параметр если нужно)
 
     console.log(`🎬 Fetching ${recommendationType} recommendations...`);
+    
+    // Логируем параметры фильтрации для gems
+    if (recommendationType === 'gems') {
+      console.log('🔍 Gems filters:', {
+        minRating: req.query.minRating || 'not set',
+        minVoteCount: req.query.minVoteCount || 'not set',
+        maxVoteCount: req.query.maxVoteCount || 'not set',
+        minReleaseDate: req.query.minReleaseDate || 'not set',
+        requireRussianTitle: req.query.requireRussianTitle || 'false',
+        excludeGenres: req.query.excludeGenres || 'none'
+      });
+    }
 
     let endpoint;
     let params = {
@@ -37,11 +49,39 @@ router.get('/popular', async (req, res) => {
       // Скрытые жемчужины: хороший рейтинг, но не слишком популярные
       // Настройки приходят от клиента через query параметры (из config.ts)
       endpoint = 'discover/movie';
+      
+      // Маппинг названий жанров на ID TMDB
+      const genreMap = {
+        'Animation': 16,
+        'Music': 10402,
+        'Documentary': 99
+      };
+      
+      // Если требуется русское название - запрашиваем на русском языке
+      const requireRussianTitle = req.query.requireRussianTitle === 'true';
+      if (requireRussianTitle) {
+        params.language = 'ru-RU'; // Запрашиваем русскую локализацию
+      }
+      
       params.sort_by = 'vote_average.desc';
       params['vote_average.gte'] = parseFloat(req.query.minRating) || 6.9;
       params['vote_count.gte'] = parseInt(req.query.minVoteCount) || 50;
       params['vote_count.lte'] = parseInt(req.query.maxVoteCount) || 500;
       params['release_date.gte'] = req.query.minReleaseDate || '2010-01-01';
+      
+      // Исключаем жанры через параметр without_genres
+      if (req.query.excludeGenres) {
+        const excludeGenreNames = req.query.excludeGenres.split(',');
+        const excludeGenreIds = excludeGenreNames
+          .map(name => genreMap[name.trim()])
+          .filter(id => id !== undefined);
+        
+        if (excludeGenreIds.length > 0) {
+          params['without_genres'] = excludeGenreIds.join(',');
+          console.log(`🚫 Excluding genres: ${excludeGenreNames.join(', ')} (IDs: ${excludeGenreIds.join(', ')})`);
+        }
+      }
+      
       params.page = Math.floor(Math.random() * 5) + 1; // Случайная страница для разнообразия
     } else if (recommendationType === 'trend') {
       // Трендовые фильмы за неделю
@@ -53,10 +93,143 @@ router.get('/popular', async (req, res) => {
 
     const response = await axios.get(`${TMDB_BASE_URL}/${endpoint}`, { params });
     
-    // Берем нужное количество фильмов
-    const movies = (response.data.results || []).slice(0, count);
+    // Получаем все результаты от TMDB
+    let movies = response.data.results || [];
+    
+    // ⚠️ ВАЖНО: Дополнительно фильтруем результаты для gems
+    // TMDB API может вернуть фильмы, которые не полностью соответствуют параметрам
+    if (recommendationType === 'gems') {
+      const minRating = parseFloat(req.query.minRating) || 6.9;
+      const minVoteCount = parseInt(req.query.minVoteCount) || 50;
+      const maxVoteCount = parseInt(req.query.maxVoteCount) || 500;
+      const minReleaseDate = req.query.minReleaseDate || '2010-01-01';
+      const requireRussianTitle = req.query.requireRussianTitle === 'true';
+      const excludeGenresParam = req.query.excludeGenres ? req.query.excludeGenres.split(',').map(g => g.trim()) : [];
+      
+      // Маппинг названий жанров на ID
+      const genreMap = {
+        'Animation': 16,
+        'Music': 10402,
+        'Documentary': 99
+      };
+      const excludeGenreIds = excludeGenresParam
+        .map(name => genreMap[name])
+        .filter(id => id !== undefined);
+      
+      console.log(`🔍 Genre filtering setup:`, {
+        excludeGenresParam,
+        excludeGenreIds,
+        genreMap
+      });
+      
+      const beforeFilter = movies.length;
+      movies = movies.filter(movie => {
+        // Проверяем рейтинг
+        if (movie.vote_average && movie.vote_average < minRating) {
+          return false;
+        }
+        
+        // Проверяем количество оценок
+        if (movie.vote_count !== undefined) {
+          if (movie.vote_count < minVoteCount || movie.vote_count > maxVoteCount) {
+            return false;
+          }
+        } else if (minVoteCount > 0) {
+          // Если vote_count отсутствует, но требуется минимум - отбрасываем
+          return false;
+        }
+        
+        // Проверяем дату релиза
+        if (movie.release_date && movie.release_date < minReleaseDate) {
+          return false;
+        }
+        
+        // Проверяем русское название
+        // Если запросили на ru-RU, то title должно быть переведено (не совпадать с оригиналом)
+        // ИЛИ original_language === 'ru'
+        if (requireRussianTitle) {
+          // Если запросили на русском, проверяем что название отличается от оригинала
+          // или оригинальный язык - русский
+          const hasRussianTitle = movie.original_language === 'ru' || 
+                                  (movie.title && movie.original_title && movie.title !== movie.original_title);
+          if (!hasRussianTitle) {
+            return false;
+          }
+        }
+        
+        // Проверяем исключенные жанры (СТРОГАЯ проверка - фильмы с исключенными жанрами НЕ ДОЛЖНЫ проходить)
+        if (excludeGenreIds.length > 0) {
+          // Если у фильма нет genre_ids - оставляем его (не можем проверить)
+          if (!movie.genre_ids || !Array.isArray(movie.genre_ids) || movie.genre_ids.length === 0) {
+            console.log(`⚠️ Movie "${movie.title}" has no genre_ids - keeping it (cannot verify excluded genres)`);
+          } else {
+            // Проверяем, есть ли среди жанров фильма исключенные
+            const hasExcludedGenre = movie.genre_ids.some(genreId => excludeGenreIds.includes(genreId));
+            if (hasExcludedGenre) {
+              // Логируем фильмы, которые отфильтровываются по жанрам
+              const excludedGenreNames = excludeGenresParam.filter((name) => {
+                const genreId = genreMap[name];
+                return genreId && movie.genre_ids.includes(genreId);
+              });
+              console.log(`🚫❌ EXCLUDING "${movie.title}" - HAS EXCLUDED GENRES: ${excludedGenreNames.join(', ')} (genre_ids: [${movie.genre_ids.join(', ')}])`);
+              return false; // ВАЖНО: возвращаем false, чтобы фильм НЕ попал в результаты
+            }
+          }
+        }
+        
+        return true;
+      });
+      
+      const afterFilter = movies.length;
+      if (beforeFilter !== afterFilter) {
+        console.log(`🔍 Filtered: ${beforeFilter} → ${afterFilter} movies (removed ${beforeFilter - afterFilter} that didn't match filters)`);
+        
+        // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: проверяем, что в финальном списке НЕТ фильмов с исключенными жанрами
+        if (excludeGenreIds.length > 0) {
+          const hasExcludedInFinal = movies.some(movie => {
+            if (!movie.genre_ids || !Array.isArray(movie.genre_ids)) return false;
+            return movie.genre_ids.some(id => excludeGenreIds.includes(id));
+          });
+          
+          if (hasExcludedInFinal) {
+            console.error(`❌❌❌ ERROR: Found movies with excluded genres in final results! This should not happen!`);
+            movies.forEach(movie => {
+              if (movie.genre_ids && Array.isArray(movie.genre_ids)) {
+                const hasExcluded = movie.genre_ids.some(id => excludeGenreIds.includes(id));
+                if (hasExcluded) {
+                  const excludedNames = excludeGenresParam.filter((name) => {
+                    const genreId = genreMap[name];
+                    return genreId && movie.genre_ids.includes(genreId);
+                  });
+                  console.error(`  ❌ "${movie.title}" has excluded genres: ${excludedNames.join(', ')}`);
+                }
+              }
+            });
+          }
+        }
+      }
+    }
+    
+    // Берем нужное количество фильмов ПОСЛЕ фильтрации
+    movies = movies.slice(0, count);
 
     console.log(`✅ Got ${movies.length} ${recommendationType} recommendations`);
+    
+    // Детальное логирование каждого фильма
+    console.log('\n📋 Recommended movies:');
+    movies.forEach((movie, index) => {
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+      const votes = movie.vote_count ? movie.vote_count.toLocaleString() : '0';
+      const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
+      const genres = movie.genre_ids && Array.isArray(movie.genre_ids) 
+        ? movie.genre_ids.map(id => {
+            const nameMap = { 16: 'Animation', 10402: 'Music', 99: 'Documentary', 28: 'Action', 12: 'Adventure', 35: 'Comedy', 80: 'Crime', 18: 'Drama', 14: 'Fantasy', 27: 'Horror', 9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 53: 'Thriller', 10752: 'War', 37: 'Western' };
+            return nameMap[id] || `Genre${id}`;
+          }).join(', ')
+        : 'No genres';
+      console.log(`  ${index + 1}. "${movie.title}" (${year}) - ⭐ ${rating}/10 - 👥 ${votes} votes - 🎭 [${genres}]`);
+    });
+    console.log(''); // Пустая строка для читаемости
 
     res.json({
       results: movies,

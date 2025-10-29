@@ -104,11 +104,25 @@ export const useMovieForm = (initialData?: Partial<MovieFormData>): UseMovieForm
   // 📥 ЗАГРУЗКА ДАННЫХ В ФОРМУ
   // Используется в MovieDetails для загрузки существующих данных фильма
   const loadFormData = useCallback((data: Partial<MovieFormData>) => {
+    console.log('🔧 loadFormData called with:', {
+      userRating: data.userRating,
+      notes: data.notes,
+      watchedDate: data.watchedDate,
+      emotions: data.emotions,
+      emotionsCount: data.emotions?.length || 0,
+      emotionDescription: data.emotionDescription
+    });
+    
     if (data.userRating !== undefined) setUserRating(data.userRating);
     if (data.notes !== undefined) setNotes(data.notes);
     if (data.watchedDate !== undefined) setWatchedDate(data.watchedDate);
-    if (data.emotions !== undefined) setEmotions(data.emotions);
+    if (data.emotions !== undefined) {
+      console.log('😊 Setting emotions in form:', data.emotions.map((e: any) => e.type || e));
+      setEmotions(data.emotions);
+    }
     if (data.emotionDescription !== undefined) setEmotionDescription(data.emotionDescription);
+    
+    console.log('✅ loadFormData completed');
   }, []);
 
   return {

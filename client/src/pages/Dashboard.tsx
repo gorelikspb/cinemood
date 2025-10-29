@@ -12,6 +12,7 @@ import { api } from '../services/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { STYLES } from '../constants/styles';
 import { config } from '../config';
+import { logger } from '../utils/logger';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6', '#ec4899'];
 
@@ -49,8 +50,16 @@ export const Dashboard: React.FC = () => {
         params.minVoteCount = config.gems.minVoteCount;
         params.maxVoteCount = config.gems.maxVoteCount;
         params.minReleaseDate = config.gems.minReleaseDate;
+        params.requireRussianTitle = config.gems.requireRussianTitle;
+        params.excludeGenres = config.gems.excludeGenres.join(',');
       }
-      return api.get('/movies/popular', { params }).then(res => res.data.results.slice(0, 8));
+      return api.get('/movies/popular', { params }).then(res => {
+        const movies = res.data.results.slice(0, 8);
+        // Логируем рекомендации в консоль браузера с информацией об исключенных жанрах
+        const excludeGenres = config.recommendationType === 'gems' ? config.gems.excludeGenres : undefined;
+        logger.recommendationsLoaded(config.recommendationType, movies, excludeGenres);
+        return movies;
+      });
     },
     {
       enabled: moviesCount === 0 && config.showRecommendations, // Only fetch when user has no movies and feature is enabled

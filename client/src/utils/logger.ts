@@ -69,5 +69,59 @@ export const logger = {
   
   success: (message: string) => {
     if (isDev) console.log('✅', message);
+  },
+
+  // 🎬 Рекомендации
+  recommendationsLoaded: (type: string, movies: any[], excludeGenres?: string[]) => {
+    if (!isDev) return;
+    
+    // Маппинг ID жанров на названия
+    const genreIdToName: { [key: number]: string } = {
+      28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+      99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+      27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+      878: 'Science Fiction', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
+    };
+    
+    console.log(`\n🎬 Recommendations loaded (${type}): ${movies.length} movies`);
+    if (excludeGenres && excludeGenres.length > 0) {
+      console.log(`🚫 Excluded genres: ${excludeGenres.join(', ')}\n`);
+    } else {
+      console.log('');
+    }
+    
+    movies.forEach((movie, index) => {
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+      const votes = movie.vote_count ? movie.vote_count.toLocaleString() : '0';
+      const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
+      
+      // Получаем названия жанров
+      let genres = 'No genres';
+      if (movie.genre_ids && Array.isArray(movie.genre_ids) && movie.genre_ids.length > 0) {
+        const genreNames = movie.genre_ids
+          .map((id: number) => genreIdToName[id] || `Genre${id}`)
+          .join(', ');
+        genres = `[${genreNames}]`;
+        
+        // Проверяем, есть ли исключенные жанры (для отладки - если фильм прошел фильтрацию, но имеет исключенные жанры)
+        const hasExcludedGenre = excludeGenres && movie.genre_ids.some((id: number) => {
+          const genreName = genreIdToName[id];
+          return genreName && excludeGenres.includes(genreName);
+        });
+        
+        if (hasExcludedGenre) {
+          // Это ОШИБКА - фильм с исключенными жанрами не должен попасть сюда!
+          const excluded = movie.genre_ids
+            .map((id: number) => genreIdToName[id])
+            .filter((name: string) => excludeGenres && excludeGenres.includes(name));
+          console.error(`  ❌ ERROR: ${index + 1}. "${movie.title}" (${year}) - ⭐ ${rating}/10 - 👥 ${votes} votes - 🎭 ${genres} - ⚠️⚠️⚠️ HAS EXCLUDED GENRES BUT STILL IN RESULTS: ${excluded.join(', ')}`);
+        } else {
+          console.log(`  ${index + 1}. "${movie.title}" (${year}) - ⭐ ${rating}/10 - 👥 ${votes} votes - 🎭 ${genres}`);
+        }
+      } else {
+        console.log(`  ${index + 1}. "${movie.title}" (${year}) - ⭐ ${rating}/10 - 👥 ${votes} votes - 🎭 ${genres}`);
+      }
+    });
+    console.log(''); // Пустая строка для читаемости
   }
 };

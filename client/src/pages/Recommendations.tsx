@@ -2,9 +2,12 @@ import React from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { Star } from 'lucide-react';
 import api from '../services/api';
 import { config } from '../config';
 import { STYLES } from '../constants/styles';
+import { logger } from '../utils/logger';
+import { getGenresFromIds } from '../utils/movieUtils';
 
 /**
  * 🎬 Страница рекомендаций
@@ -34,8 +37,48 @@ const Recommendations: React.FC = () => {
         params.append('minVoteCount', config.gems.minVoteCount.toString());
         params.append('maxVoteCount', config.gems.maxVoteCount.toString());
         params.append('minReleaseDate', config.gems.minReleaseDate);
+        params.append('requireRussianTitle', config.gems.requireRussianTitle.toString());
+        params.append('excludeGenres', config.gems.excludeGenres.join(','));
       }
-      return api.get(`/movies/popular?${params}`).then(res => res.data.results || []);
+      return api.get(`/movies/popular?${params}`).then(res => {
+        let movies = res.data.results || [];
+        
+        // КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ: исключаем фильмы с нежелательными жанрами
+        if (config.recommendationType === 'gems' && config.gems.excludeGenres.length > 0) {
+          const genreIdToName: { [key: number]: string } = {
+            28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+            99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+            27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+            878: 'Science Fiction', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
+          };
+          
+          const excludeGenreIds = config.gems.excludeGenres
+            .map(name => {
+              const entry = Object.entries(genreIdToName).find(([_, n]) => n === name);
+              return entry ? parseInt(entry[0]) : null;
+            })
+            .filter(id => id !== null) as number[];
+          
+          const beforeFilter = movies.length;
+          movies = movies.filter((movie: any) => {
+            if (!movie.genre_ids || !Array.isArray(movie.genre_ids)) {
+              return true; // Оставляем, если нет информации о жанрах
+            }
+            // Исключаем, если есть хотя бы один исключенный жанр
+            const hasExcludedGenre = movie.genre_ids.some((id: number) => excludeGenreIds.includes(id));
+            return !hasExcludedGenre;
+          });
+          
+          if (beforeFilter !== movies.length) {
+            console.log(`🔍 Client filter: ${beforeFilter} → ${movies.length} movies (removed ${beforeFilter - movies.length} with excluded genres)`);
+          }
+        }
+        
+        // Логируем рекомендации в консоль браузера с информацией об исключенных жанрах
+        const excludeGenres = config.recommendationType === 'gems' ? config.gems.excludeGenres : undefined;
+        logger.recommendationsLoaded(config.recommendationType, movies, excludeGenres);
+        return movies;
+      });
     },
     {
       enabled: config.showRecommendations,
@@ -101,6 +144,36 @@ const Recommendations: React.FC = () => {
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <span className="text-gray-400 text-xs">No poster</span>
+                </div>
+              )}
+            </div>
+            {/* Рейтинг и оценки */}
+            <div className="mb-1 space-y-1">
+              <div className="flex items-center justify-center gap-2">
+                {movie.vote_average !== undefined && movie.vote_average > 0 ? (
+                  <>
+                    <div className="flex items-center text-yellow-600">
+                      <Star className="h-3 w-3 fill-current" />
+                      <span className="text-sm font-bold ml-0.5">{movie.vote_average.toFixed(1)}</span>
+                    </div>
+                    {movie.vote_count !== undefined && movie.vote_count > 0 && (
+                      <span className="text-xs text-gray-600">
+                        {movie.vote_count.toLocaleString()} {movie.vote_count === 1 ? t.vote : t.votes}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-400">No ratings</span>
+                )}
+              </div>
+              {/* Жанры */}
+              {movie.genre_ids && movie.genre_ids.length > 0 && (
+                <div className="flex items-center justify-center gap-1 flex-wrap">
+                  {getGenresFromIds(movie.genre_ids, 2).map((genre, idx) => (
+                    <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                      {genre}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
