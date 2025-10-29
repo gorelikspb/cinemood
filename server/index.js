@@ -1,0 +1,74 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
+
+const movieRoutes = require('./routes/movies');
+const emotionRoutes = require('./routes/emotions');
+const statsRoutes = require('./routes/stats');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// CORS configuration (должно быть ПЕРЕД rate limiting)
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.CLIENT_URL 
+    : 'http://localhost:3000',
+  credentials: true
+}));
+
+// Security middleware
+app.use(helmet());
+
+// Rate limiting - более мягкие настройки для разработки
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isDevelopment ? 1000 : 100, // 1000 запросов в dev, 100 в production
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Возвращать информацию о лимите в заголовках `RateLimit-*`
+  legacyHeaders: false, // Отключить заголовки `X-RateLimit-*`
+  skip: (req) => {
+    // Пропускаем health check из лимита
+    return req.path === '/api/health';
+  }
+});
+
+app.use(limiter);
+
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/api/movies', movieRoutes);
+app.use('/api/emotions', emotionRoutes);
+app.use('/api/stats', statsRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    error: 'Something went wrong!',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+app.listen(PORT, () => {
+  console.log(`🎬 Rewatch server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+
