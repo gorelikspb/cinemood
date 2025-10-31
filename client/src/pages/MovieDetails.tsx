@@ -14,12 +14,13 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { MovieForm } from '../components/MovieForm';
 import { STYLES } from '../constants/styles';
 import { useMovieForm } from '../hooks/useMovieForm';
+import { track, AnalyticsEvents } from '../utils/analytics';
 
 export const MovieDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
   
   const [showDescription, setShowDescription] = useState(false);
   
@@ -339,7 +340,7 @@ export const MovieDetails: React.FC = () => {
   }, [movieForm.userRating, movieForm.notes, JSON.stringify(movieForm.emotions.map(e => e.type).sort()), movieForm.emotionDescription, movieForm.watchedDate]);
 
   const handleDeleteMovie = () => {
-    if (window.confirm('Are you sure you want to delete this movie from your diary?')) {
+    if (window.confirm(t.confirmDelete)) {
       deleteMovieMutation.mutate();
     }
   };
@@ -369,13 +370,13 @@ export const MovieDetails: React.FC = () => {
         <div className="text-center py-12">
           <Film className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Movie not found
+            {t.movieNotFound}
           </h3>
           <p className="text-gray-600 mb-4">
-            The movie you're looking for doesn't exist in your diary.
+            {t.movieNotFoundDescription}
           </p>
           <button onClick={() => navigate('/diary')} className="btn-primary">
-            Back to Diary
+            {t.backToDiary}
           </button>
         </div>
       </div>
@@ -394,7 +395,7 @@ export const MovieDetails: React.FC = () => {
           <div className={STYLES.flexCenter}>
             <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
             <span className={STYLES.textSmall}>
-              Added to <Link to="/watchlist" className="underline font-medium">watchlist</Link>
+              {t.addedToWatchlist} <Link to="/watchlist" className="underline font-medium">{t.myWatchlist}</Link>
             </span>
           </div>
         </div>
@@ -418,12 +419,12 @@ export const MovieDetails: React.FC = () => {
             <div className={`${STYLES.flexCenter} space-x-4 ${STYLES.textSmall} mt-1`}>
               <div className={STYLES.flexCenter}>
                 <Calendar className="h-4 w-4 mr-1" />
-                {new Date(movie.watched_date).toLocaleDateString()}
+                {movieForm.watchedDate ? new Date(movieForm.watchedDate).toLocaleDateString() : (movie.watched_date ? new Date(movie.watched_date).toLocaleDateString() : '')}
               </div>
-              {movie.user_rating && (
+              {movieForm.userRating && (
                 <div className={STYLES.flexCenter}>
                   <Star className="h-4 w-4 mr-1 fill-current text-yellow-500" />
-                  {movie.user_rating}/10
+                  {movieForm.userRating}/10
                 </div>
               )}
             </div>
@@ -455,18 +456,36 @@ export const MovieDetails: React.FC = () => {
           showDateFirst={false}
         />
 
+        {/* Explicit Save Button */}
+        <div className="mt-4">
+          <button
+            onClick={() => handleSave()}
+            className={STYLES.buttonPrimary}
+          >
+            {t.save}
+          </button>
+        </div>
+
         {/* Recommended Movies */}
         {similarMovies && similarMovies.length > 0 && (
           <div className={STYLES.card}>
             <h3 className={STYLES.heading4} style={{ marginBottom: '12px' }}>
-              If you enjoyed this movie's vibe, you might also like...
+              {t.ifYouEnjoyedThisMovie}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
               {similarMovies.map((similar: any) => (
                 <div
                   key={similar.id}
                   className="group cursor-pointer"
-                  onClick={() => navigate(`/movie-tmdb/${similar.id}`)}
+                  onClick={() => {
+                    // Трекинг: открыт похожий фильм
+                    track(AnalyticsEvents.OpenSimilar, {
+                      movieId: id,
+                      similarMovieId: similar.id,
+                      similarMovieTitle: similar.title,
+                    });
+                    navigate(`/movie-tmdb/${similar.id}`);
+                  }}
                 >
                   {similar.poster_path ? (
                     <img
@@ -488,7 +507,7 @@ export const MovieDetails: React.FC = () => {
                     </p>
                   )}
                   <div className="mt-2 text-xs text-primary-600 font-medium">
-                    Add to watchlist →
+                    {t.addToWatchlistArrow}
                   </div>
                 </div>
               ))}
@@ -503,39 +522,39 @@ export const MovieDetails: React.FC = () => {
             className={`w-full ${STYLES.flexBetween} text-left`}
           >
             <h3 className={STYLES.heading4}>
-              Movie Information
+              {t.movieInformation}
             </h3>
             <span className={STYLES.textMuted}>{showDescription ? '−' : '+'}</span>
           </button>
           {showDescription && (
             <div className="mt-4 space-y-3 pt-4 border-t">
               <div>
-                <span className="font-medium text-gray-700">Release Date:</span>
+                <span className="font-medium text-gray-700">{t.releaseDateLabel}</span>
                 <span className="ml-2 text-gray-600">
-                  {movie.release_date ? new Date(movie.release_date).toLocaleDateString() : 'Unknown'}
+                  {movie.release_date ? new Date(movie.release_date).toLocaleDateString() : t.unknown}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-700">Runtime:</span>
+                <span className="font-medium text-gray-700">{t.runtimeLabel}</span>
                 <span className="ml-2 text-gray-600">
-                  {movie.runtime ? `${movie.runtime} minutes` : 'Unknown'}
+                  {movie.runtime ? `${movie.runtime} ${t.minutes}` : t.unknown}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-700">Genres:</span>
+                <span className="font-medium text-gray-700">{t.genresLabel}</span>
                 <span className="ml-2 text-gray-600">
-                  {movie.genres?.map((genre: any) => genre.name).join(', ') || 'Unknown'}
+                  {movie.genres?.map((genre: any) => genre.name).join(', ') || t.unknown}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-700">TMDB Rating:</span>
+                <span className="font-medium text-gray-700">{t.tmdbRatingLabel}</span>
                 <span className="ml-2 text-gray-600">
-                  {movie.rating ? `${movie.rating.toFixed(1)}/10` : 'N/A'}
+                  {movie.rating ? `${movie.rating.toFixed(1)}/10` : t.nA}
                 </span>
               </div>
               {movie.overview && (
                 <div>
-                  <span className="font-medium text-gray-700">Overview:</span>
+                  <span className="font-medium text-gray-700">{t.overviewLabel}</span>
                   <p className="mt-1 text-gray-700 leading-relaxed">
                     {movie.overview}
                   </p>

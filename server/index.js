@@ -7,6 +7,8 @@ require('dotenv').config();
 const movieRoutes = require('./routes/movies');
 const emotionRoutes = require('./routes/emotions');
 const statsRoutes = require('./routes/stats');
+const emailRoutes = require('./routes/emails');
+const feedbackRoutes = require('./routes/feedback');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +48,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/movies', movieRoutes);
 app.use('/api/emotions', emotionRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/emails', emailRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

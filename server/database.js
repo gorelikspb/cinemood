@@ -50,11 +50,33 @@ db.serialize(() => {
     )
   `);
 
+  // Emails table (for collecting user emails)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS emails (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Feedback table (for user feedback)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message TEXT NOT NULL,
+      email TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Create indexes for better performance
   db.run('CREATE INDEX IF NOT EXISTS idx_movies_watched_date ON movies(watched_date)');
   db.run('CREATE INDEX IF NOT EXISTS idx_movies_tmdb_id ON movies(tmdb_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_emotions_movie_id ON emotions(movie_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_emotions_type ON emotions(emotion_type)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_emails_email ON emails(email)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at)');
 });
 
 module.exports = db;

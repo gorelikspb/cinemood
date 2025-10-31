@@ -12,6 +12,7 @@ import { api } from '../services/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { STYLES } from '../constants/styles';
 import { MovieListItem } from '../components/MovieListItem';
+import { EmailModal } from '../components/EmailModal';
 
 export const MovieDiary: React.FC = () => {
   const { language, t } = useTranslation();
@@ -19,6 +20,10 @@ export const MovieDiary: React.FC = () => {
   const [sortBy, setSortBy] = useState('watched_date');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [currentPage] = useState(1);
+  const [showEmailBanner, setShowEmailBanner] = useState(
+    typeof window !== 'undefined' && localStorage.getItem('rewatch-email-submitted') !== 'true'
+  );
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   const { data: movies, isLoading, error } = useQuery(
     ['movies', currentPage, sortBy, sortOrder, language],
@@ -113,17 +118,43 @@ export const MovieDiary: React.FC = () => {
             {t.personalCollection}
           </p>
         </div>
-        <Link to="/add-movie" className="btn-primary mt-4 sm:mt-0">
+        <Link to="/add-movie" className={`${STYLES.buttonPrimary} mt-4 sm:mt-0`}>
           <Plus className="h-4 w-4 mr-2" />
           {t.addMovie}
         </Link>
       </div>
 
+      {/* Email Banner (only if email not submitted) */}
+      {showEmailBanner && (
+        <div className="card mb-6 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-200 text-center">
+          <div className="py-5">
+            <div className="text-4xl mb-2">📧</div>
+            <p className={`${STYLES.textBody} mb-3`}>
+              {t.wantToOpenDiaryFromOtherDevices}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button 
+                onClick={() => setShowEmailBanner(false)}
+                className={STYLES.buttonSecondary}
+              >
+                {t.later}
+              </button>
+              <button 
+                onClick={() => setShowEmailModal(true)}
+                className={STYLES.buttonPrimary}
+              >
+                {t.leaveEmail}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="card mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
-          <div className="flex-1">
+          {/* <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -134,7 +165,7 @@ export const MovieDiary: React.FC = () => {
                 className="input-field pl-10"
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Sort */}
           <div className="flex gap-2">
@@ -189,13 +220,23 @@ export const MovieDiary: React.FC = () => {
             }
           </p>
           {!searchTerm && (
-            <Link to="/add-movie" className="btn-primary">
+            <Link to="/add-movie" className={STYLES.buttonPrimary}>
               <Plus className="h-4 w-4 mr-2" />
               {t.addFirstMovie}
             </Link>
           )}
         </div>
       )}
+
+      {/* Email Modal */}
+      <EmailModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        onSuccess={() => {
+          setShowEmailModal(false);
+          setShowEmailBanner(false);
+        }}
+      />
     </div>
   );
 };

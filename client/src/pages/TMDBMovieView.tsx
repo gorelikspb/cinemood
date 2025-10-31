@@ -6,48 +6,33 @@ import {
   Calendar,
   Film,
   Plus,
-  Mail
+  Mail,
+  Clock
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useAddToWatchlist } from '../hooks/useAddToWatchlist';
+import { EmailModal } from '../components/EmailModal';
+import { STYLES } from '../constants/styles';
 
 export const TMDBMovieView: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
   const navigate = useNavigate();
-  const { language } = useTranslation();
-  const [email, setEmail] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [justRegistered, setJustRegistered] = React.useState(false);
+  const { language, t } = useTranslation();
+  
+  // Хук для добавления в watchlist с проверкой email
+  const {
+    showEmailModal,
+    pendingMovieTitle,
+    handleAddToWatchlist,
+    handleEmailSuccess,
+    handleCloseModal,
+  } = useAddToWatchlist(); // Убрали callback, так как теперь есть отдельная кнопка для добавления в дневник
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Save email locally
-    localStorage.setItem('rewatch-email', email);
-    localStorage.setItem('rewatch-registered', 'true');
-    setJustRegistered(true);
-    setIsSubmitting(false);
-  };
-
-  const handleContinue = () => {
-    // Hide registration message, show add to watchlist button
-    setJustRegistered(false);
-    navigate(`/add-movie?tmdbId=${tmdbId}`);
-  };
-
-  const handleAddToWatchlist = () => {
-    // Get current watchlist
-    const currentWatchlist = JSON.parse(localStorage.getItem('rewatch-watchlist') || '[]');
-    
-    // Add tmdbId to watchlist if not already there
-    if (!currentWatchlist.includes(tmdbId)) {
-      currentWatchlist.push(tmdbId);
-      localStorage.setItem('rewatch-watchlist', JSON.stringify(currentWatchlist));
-    }
-    
-    // Navigate to add movie page
-    navigate(`/add-movie?tmdbId=${tmdbId}`);
+  const onAddToWatchlist = () => {
+    console.log('🎬 Add to Watchlist clicked:', { tmdbId, movieTitle: movie?.title });
+    // Используем хук для проверки email перед добавлением
+    handleAddToWatchlist(tmdbId!, movie?.title);
   };
 
   // Scroll to top when component mounts
@@ -86,10 +71,10 @@ export const TMDBMovieView: React.FC = () => {
         <div className="text-center py-12">
           <Film className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Movie not found
+            {t.movieNotFound}
           </h3>
           <button onClick={() => navigate(-1)} className="btn-primary">
-            Go Back
+            {t.goBack}
           </button>
         </div>
       </div>
@@ -125,119 +110,66 @@ export const TMDBMovieView: React.FC = () => {
       </div>
 
       <div className="p-4 sm:p-6 space-y-4">
-        {/* Registration Form First */}
+        {/* Action Buttons */}
         <div className="card">
-          {!justRegistered ? (
-            <>
-              {localStorage.getItem('rewatch-email') ? (
-                // Already registered - show add to watchlist
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
-                    Add this movie to your watchlist?
-                  </h2>
-                  <button
-                    onClick={handleAddToWatchlist}
-                    className="btn-primary w-full"
-                  >
-                    Add to Watchlist
-                  </button>
-                </div>
-              ) : (
-                // Not registered - show registration form
-                <>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
-                    Want to save this movie to your diary?
-                  </h2>
-                  
-                  <form onSubmit={handleEmailSubmit} className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Your Email
-                      </label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="your@email.com"
-                        className="input-field"
-                        required
-                        disabled={isSubmitting}
-                      />
-                      <p className="text-xs text-gray-600 mt-1">
-                        We'll save your movie diary here ✨
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="btn-primary flex-1"
-                      >
-                        {isSubmitting ? 'Registering...' : 'Register'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => navigate(-1)}
-                        className="btn-secondary flex-1"
-                      >
-                        Maybe Later
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
-            </>
-          ) : (
-            <div className="text-center">
-              <div className="text-4xl mb-3">✅</div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Thanks for registering!
-              </h2>
-              <p className="text-gray-700 mb-4">
-                You can now add movies to your watchlist and track your emotions.
-              </p>
-              <button
-                onClick={handleContinue}
-                className="btn-primary"
-              >
-                OK
-              </button>
-            </div>
-          )}
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate(`/add-movie?tmdbId=${tmdbId}`)}
+              className={`${STYLES.buttonPrimary} w-full flex items-center justify-center`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t.addMovieToDiary}
+            </button>
+            <button
+              onClick={onAddToWatchlist}
+              className={`${STYLES.buttonWatchlist} w-full flex items-center justify-center`}
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              {t.addToWatchlist}
+            </button>
+          </div>
         </div>
+
+        {/* Email Modal */}
+        <EmailModal
+          isOpen={showEmailModal}
+          onClose={handleCloseModal}
+          onSuccess={handleEmailSuccess}
+          movieTitle={pendingMovieTitle}
+        />
 
         {/* Movie Poster and Info */}
         <div className="card">
-          <div className="flex gap-4">
+          {/* Poster - Centered */}
+          <div className="flex justify-center mb-6">
             {movie.poster_path ? (
               <img
-                src={`https://image.tmdb.org/t/p/w154${movie.poster_path}`}
+                src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
                 alt={movie.title}
-                className="w-32 h-48 rounded-lg flex-shrink-0"
+                className="w-48 rounded-lg shadow-md"
               />
             ) : (
-              <div className="w-32 h-48 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Film className="h-8 w-8 text-gray-400" />
+              <div className="w-48 aspect-[2/3] bg-gray-200 rounded-lg flex items-center justify-center">
+                <Film className="h-12 w-12 text-gray-400" />
               </div>
             )}
-            
-            <div className="flex-1">
-              {movie.overview && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2 text-sm">Overview</h3>
-                  <p className="text-gray-700 text-sm leading-relaxed">
-                    {movie.overview}
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
+          
+          {/* Overview - Full width */}
+          {movie.overview && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3 text-lg">{t.overview}</h3>
+              <p className="text-gray-700 text-base leading-relaxed">
+                {movie.overview}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Additional Info */}
         {movie.genres && movie.genres.length > 0 && (
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Genres</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">{t.genres}</h3>
             <div className="flex flex-wrap gap-2">
               {movie.genres.map((genre: any) => (
                 <span

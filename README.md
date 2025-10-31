@@ -1,4 +1,4 @@
-# Rewatch - Movie Diary with Emotions
+# Cinemood - Movie Diary with Emotions
 
 A beautiful web application for tracking movies you've watched with emotional responses and insights.
 
@@ -108,5 +108,14 @@ gems: {
   minReleaseDate: '2010-01-01', // Не раньше этого года
 }
 ```
+
+## 📧 Получение Email'ов пользователей
+
+Все email'ы сохраняются в базе данных. Простые способы получить их:
+
+- **JSON формат:** `http://localhost:5000/api/emails`
+- **CSV формат:** `http://localhost:5000/api/emails?format=csv`
+
+📖 **Детальные инструкции:** см. [EMAILS_INSTRUCTIONS.md](./EMAILS_INSTRUCTIONS.md)
 
 

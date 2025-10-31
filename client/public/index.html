@@ -4,14 +4,29 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#ef4444" />
     <meta
       name="description"
-      content="Rewatch - Your emotional movie diary"
+      content="Cinemood - Your emotional movie diary"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>Rewatch - Movie Diary with Emotions</title>
+    <title>Cinemood - Movie Diary with Emotions</title>
+    
+    <!-- Google Analytics 4 -->
+    <!-- 
+      Инструкция: https://analytics.google.com/
+      1. Создайте свойство GA4
+      2. Создайте Data Stream → Web
+      3. Скопируйте Measurement ID (формат: G-XXXXXXXXXX)
+      4. Создайте файл client/.env с: REACT_APP_GA4_MEASUREMENT_ID=G-XXXXXXXXXX
+      5. Или замените G-XXXXXXXXXX в скрипте ниже напрямую
+      
+      Подробная инструкция: см. ANALYTICS_SETUP.md
+      
+      Google Analytics будет инициализирован автоматически через client/src/index.tsx
+      если задана переменная окружения REACT_APP_GA4_MEASUREMENT_ID
+    -->
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

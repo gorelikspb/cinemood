@@ -4,16 +4,19 @@ import {
   Home, 
   Film, 
   Plus, 
-  Heart,
   Menu,
   X,
   Clock,
-  Sparkles
+  Sparkles,
+  MessageCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { STYLES } from '../constants/styles';
+import { AppLogo } from './AppLogo';
+import { FeedbackModal } from './FeedbackModal';
+import { InstallButton } from './InstallButton';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,15 +24,17 @@ interface LayoutProps {
 
 interface NavigationItem {
   name: string;
-  href: string;
+  href?: string;
   icon: React.ComponentType<any>;
   disabled?: boolean;
+  onClick?: () => void; // Для элементов, которые не являются ссылками
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const { t } = useTranslation();
 
   const navigation: NavigationItem[] = [
@@ -38,6 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: t.movieDiary, href: '/diary', icon: Film },
     { name: 'Watchlist', href: '/watchlist', icon: Clock },
     { name: 'Recommendations', href: '/recommendations', icon: Sparkles },
+    { name: t.feedback, onClick: () => setIsFeedbackModalOpen(true), icon: MessageCircle },
   ];
 
   const isActive = (path: string) => {
@@ -80,10 +86,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             )}
           </button>
           
-          <div className="flex items-center space-x-2">
-            <Heart className="h-6 w-6 text-primary-600" />
-            <span className="text-lg font-bold text-gray-900">Rewatch</span>
-          </div>
+          <AppLogo variant="mobile" />
           
           <LanguageSwitcher />
         </div>
@@ -98,10 +101,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="flex flex-col h-full">
           {/* Desktop Logo */}
           <div className="hidden lg:flex items-center justify-center h-16 px-6 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <Heart className="h-8 w-8 text-primary-600" />
-              <span className="text-xl font-bold text-gray-900">Rewatch</span>
-            </div>
+            <AppLogo variant="desktop" />
           </div>
 
           {/* Navigation */}
@@ -110,19 +110,37 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               const Icon = item.icon;
               const isDisabled = item.disabled;
               
+              // Если есть onClick, это кнопка, а не ссылка
+              if (item.onClick) {
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => {
+                      item.onClick?.();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    disabled={isDisabled}
+                    className={STYLES.navItem}
+                  >
+                    <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
+                    <span className="truncate text-base lg:text-sm">{item.name}</span>
+                  </button>
+                );
+              }
+              
               return (
                 <Link
                   key={item.name}
-                  to={item.href}
+                  to={item.href || '#'}
                   onClick={(e) => {
                     if (isDisabled) {
                       e.preventDefault();
                     }
                     setIsMobileMenuOpen(false);
                   }}
-                  className={isActive(item.href) ? STYLES.navItemActive : STYLES.navItem}
+                  className={isActive(item.href || '') ? STYLES.navItemActive : STYLES.navItem}
                 >
-                  <Icon className="hidden lg:block h-5 w-5 mr-3 flex-shrink-0" />
+                  <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
                   <span className="truncate text-base lg:text-sm">{item.name}</span>
                 </Link>
               );
@@ -130,7 +148,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </nav>
 
           {/* Footer */}
-          <div className="px-4 py-4 border-t border-gray-200">
+          <div className="px-4 py-4 border-t border-gray-200 space-y-2">
+            {/* Install Button */}
+            <InstallButton />
+            
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-500 text-center flex-1">
                 Your emotional movie journey
@@ -157,6 +178,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+      />
     </div>
   );
 };

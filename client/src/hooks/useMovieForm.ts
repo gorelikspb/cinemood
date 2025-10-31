@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { logger } from '../utils/logger';
+import { track, AnalyticsEvents } from '../utils/analytics';
 
 /**
  * 📝 ПЕРЕИСПОЛЬЗУЕМЫЙ ХУК ДЛЯ ФОРМЫ ФИЛЬМА
@@ -81,6 +82,12 @@ export const useMovieForm = (initialData?: Partial<MovieFormData>): UseMovieForm
       } else {
         // Добавляем новую эмоцию
         logger.emotionAdded(emotion);
+        
+        // Трекинг: эмоция добавлена
+        track(AnalyticsEvents.AddEmotion, {
+          emotionType: emotion,
+        });
+        
         return [...prev, { type: emotion }];
       }
     });

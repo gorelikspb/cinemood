@@ -6,10 +6,10 @@ Write-Host "🛑 Остановка сервера на порту 5000..." -For
 # Найти и остановить процессы на порту 5000 (Backend)
 $port5000 = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
 if ($port5000) {
-    $pid5000 = $port5000 | Select-Object -ExpandProperty OwningProcess -Unique
-    foreach ($processId in $pid5000) {
-        Write-Host "Остановка процесса Backend (PID: $processId)" -ForegroundColor Yellow
-        Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+    $processIds = $port5000 | Select-Object -ExpandProperty OwningProcess -Unique
+    foreach ($procId in $processIds) {
+        Write-Host "Остановка процесса Backend (PID: $procId)" -ForegroundColor Yellow
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
     }
 } else {
     Write-Host "Процесс на порту 5000 не найден" -ForegroundColor Gray

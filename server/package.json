@@ -1,7 +1,7 @@
 {
   "name": "rewatch-server",
   "version": "1.0.0",
-  "description": "Backend server for Rewatch movie diary app",
+  "description": "Backend server for Cinemood movie diary app",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

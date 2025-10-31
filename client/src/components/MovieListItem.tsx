@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Film, Calendar, Star, User, Tag } from 'lucide-react';
+import { Film, Calendar, Star, User, Tag, Trash2 } from 'lucide-react';
 import { STYLES } from '../constants/styles';
 import { getTMDBPosterUrl } from '../utils/movieUtils';
 
@@ -27,6 +27,7 @@ interface MovieListItemProps {
   showNotes?: boolean;
   // Функция для получения класса badge эмоций
   getEmotionBadgeClass?: (emotion: string) => string;
+  onRemove?: (tmdbId: string | number) => void;
 }
 
 export const MovieListItem: React.FC<MovieListItemProps> = ({
@@ -39,7 +40,8 @@ export const MovieListItem: React.FC<MovieListItemProps> = ({
   showGenres = false,
   showEmotions = false,
   showNotes = false,
-  getEmotionBadgeClass
+  getEmotionBadgeClass,
+  onRemove
 }) => {
   // Получаем режиссера (если есть в crew или нужно будет получать из credits)
   const getDirector = () => {
@@ -90,11 +92,21 @@ export const MovieListItem: React.FC<MovieListItemProps> = ({
     });
   }
 
+  const tmdbId = movie.tmdb_id || movie.id;
+
   return (
-    <Link
-      to={linkTo}
-      className={`${STYLES.movieCard} flex items-center`}
-    >
+    <div className={`${STYLES.movieCard} relative`}> 
+      {onRemove && (
+        <button
+          className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(tmdbId); }}
+          aria-label="Remove from watchlist"
+          title="Remove from watchlist"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+      <Link to={linkTo} className="flex items-center">
       {/* Small Poster Icon */}
       <div className="relative w-16 h-20 sm:w-20 sm:h-28 flex-shrink-0 bg-gray-200 overflow-hidden rounded-l-xl">
         {movie.poster_path ? (
@@ -188,7 +200,8 @@ export const MovieListItem: React.FC<MovieListItemProps> = ({
           </p>
         )}
       </div>
-    </Link>
+      </Link>
+    </div>
   );
 };
 

@@ -55,7 +55,7 @@ localStorage.clear();
 5. Нажмите `Enter`
 6. Обновите страницу (`F5`)
 
-#### Вариант 2: Удалить только данные Rewatch
+#### Вариант 2: Удалить только данные Cinemood
 В консоли браузера выполните:
 
 ```javascript
@@ -105,7 +105,7 @@ npm start
 
 Вы должны увидеть:
 ```
-🎬 Rewatch server running on port 5000
+🎬 Cinemood server running on port 5000
 📊 Environment: development
 ```
 
@@ -118,7 +118,7 @@ npm start
 Вы должны увидеть:
 ```
 Compiled successfully!
-You can now view rewatch in the browser.
+You can now view Cinemood in the browser.
   Local:            http://localhost:3000
 ```
 

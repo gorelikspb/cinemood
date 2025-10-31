@@ -2,7 +2,6 @@ import React from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Star } from 'lucide-react';
 import api from '../services/api';
 import { config } from '../config';
 import { STYLES } from '../constants/styles';
@@ -25,11 +24,11 @@ const Recommendations: React.FC = () => {
 
   // Fetch recommendations based on config.recommendationType
   const { data: movies, isLoading, error } = useQuery(
-    ['recommendations', language, config.recommendationType, config.gems],
+    ['recommendations', config.recommendationType, config.gems], // Убрали language из ключа, т.к. всегда используем 'en'
     () => {
       const params = new URLSearchParams({
         type: config.recommendationType,
-        language: language
+        language: 'en' // Всегда используем английский для одинаковых рекомендаций
       });
       // Передаем настройки gems если выбран этот тип
       if (config.recommendationType === 'gems') {
@@ -147,36 +146,16 @@ const Recommendations: React.FC = () => {
                 </div>
               )}
             </div>
-            {/* Рейтинг и оценки */}
-            <div className="mb-1 space-y-1">
-              <div className="flex items-center justify-center gap-2">
-                {movie.vote_average !== undefined && movie.vote_average > 0 ? (
-                  <>
-                    <div className="flex items-center text-yellow-600">
-                      <Star className="h-3 w-3 fill-current" />
-                      <span className="text-sm font-bold ml-0.5">{movie.vote_average.toFixed(1)}</span>
-                    </div>
-                    {movie.vote_count !== undefined && movie.vote_count > 0 && (
-                      <span className="text-xs text-gray-600">
-                        {movie.vote_count.toLocaleString()} {movie.vote_count === 1 ? t.vote : t.votes}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-xs text-gray-400">No ratings</span>
-                )}
+            {/* Жанры */}
+            {movie.genre_ids && movie.genre_ids.length > 0 && (
+              <div className="mb-1 flex items-center justify-center gap-1 flex-wrap">
+                {getGenresFromIds(movie.genre_ids, 2).map((genre, idx) => (
+                  <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                    {genre}
+                  </span>
+                ))}
               </div>
-              {/* Жанры */}
-              {movie.genre_ids && movie.genre_ids.length > 0 && (
-                <div className="flex items-center justify-center gap-1 flex-wrap">
-                  {getGenresFromIds(movie.genre_ids, 2).map((genre, idx) => (
-                    <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
             <h3 className="text-sm font-medium text-gray-900 truncate">{movie.title}</h3>
             <p className="text-xs text-gray-500">{new Date(movie.release_date).getFullYear()}</p>
           </div>

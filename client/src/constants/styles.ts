@@ -16,6 +16,7 @@ const COLORS = {
   secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-900 focus:ring-gray-500',
   danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500',
   success: 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500',
+  watchlist: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-800 focus:ring-cyan-300', // Легкий голубой цвет для будущего
   disabled: 'bg-gray-300 text-gray-500 cursor-not-allowed',
   
   // Для эмоций
@@ -30,9 +31,9 @@ const COLORS = {
 
 // 🏗️ БАЗОВЫЕ КОМПОНЕНТЫ
 const BASE = {
-  button: 'px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
-  buttonSmall: 'px-3 py-1.5 text-sm rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
-  buttonLarge: 'px-6 py-3 text-lg rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
+  button: 'inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
+  buttonSmall: 'inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
+  buttonLarge: 'inline-flex items-center justify-center px-6 py-3 text-lg rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
   
   card: 'bg-white rounded-xl shadow-sm border border-gray-200 p-6',
   
@@ -59,6 +60,7 @@ export const STYLES = {
   button: `${BASE.button} ${COLORS.secondary}`,
   buttonPrimary: `${BASE.button} ${COLORS.primary}`,
   buttonSecondary: `${BASE.button} ${COLORS.secondary}`,
+  buttonWatchlist: `${BASE.button} ${COLORS.watchlist}`,
   buttonDanger: `${BASE.button} ${COLORS.danger}`,
   buttonSuccess: `${BASE.button} ${COLORS.success}`,
   buttonDisabled: `${BASE.button} ${COLORS.disabled}`,

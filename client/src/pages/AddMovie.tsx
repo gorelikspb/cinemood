@@ -5,7 +5,8 @@ import {
   Search,    // Search icon for movie search input
   Film,      // Placeholder icon for movies without posters
   ArrowLeft, // Back navigation button
-  CheckCircle // Watchlist status indicator
+  CheckCircle, // Watchlist status indicator
+  Clock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
@@ -24,6 +25,9 @@ import { MovieForm } from '../components/MovieForm';
 import { useMovieForm } from '../hooks/useMovieForm';
 import { logger } from '../utils/logger';
 import { submitMovieWithEmotions } from '../utils/movieSubmission';
+import { useAddToWatchlist } from '../hooks/useAddToWatchlist';
+import { EmailModal } from '../components/EmailModal';
+import { track, AnalyticsEvents } from '../utils/analytics';
 
 /**
  * 🎬 СТРАНИЦА ДОБАВЛЕНИЯ ФИЛЬМА
@@ -50,6 +54,7 @@ export const AddMovie: React.FC = () => {
   // Если пользователь пришел с /add-movie?tmdbId=123, автоматически загружаем этот фильм
   const { search } = window.location;               // Получаем ?tmdbId=123 из URL
   const tmdbIdParam = new URLSearchParams(search).get('tmdbId'); // Извлекаем значение tmdbId
+  const fromParam = new URLSearchParams(search).get('from'); // Откуда пришел пользователь
   
   // 🔍 ПОИСК ФИЛЬМОВ теперь инкапсулирован в компоненте MovieSearch
   // Логика debouncing, API запросы, кэширование - всё внутри компонента
@@ -57,6 +62,22 @@ export const AddMovie: React.FC = () => {
   // 📝 СОСТОЯНИЕ ФОРМЫ (вынесено в переиспользуемый хук)
   const movieForm = useMovieForm();
   const [selectedMovie, setSelectedMovie] = useState<any>(null);           // Выбранный фильм из поиска
+  
+  // Определяем режим по умолчанию: если пришли из watchlist, то watchlist, иначе diary
+  const [mode, setMode] = useState<'diary' | 'watchlist'>(fromParam === 'watchlist' ? 'watchlist' : 'diary');
+
+  // Добавление в watchlist с проверкой email
+  // После добавления переходим на страницу watchlist
+  const {
+    showEmailModal,
+    pendingMovieTitle,
+    handleAddToWatchlist,
+    handleEmailSuccess,
+    handleCloseModal,
+  } = useAddToWatchlist(() => {
+    // Переход на страницу watchlist после добавления
+    navigate('/watchlist');
+  });
 
   // 🚀 АВТОЗАГРУЗКА ФИЛЬМА при переходе с tmdbId в URL
   // Срабатывает когда пользователь приходит из рекомендаций или watchlist
@@ -148,6 +169,13 @@ export const AddMovie: React.FC = () => {
         addMovieMutation,
         addEmotionMutation
       );
+      
+      // Трекинг: фильм добавлен
+      track(AnalyticsEvents.AddFilm, {
+        movieId: selectedMovie.id,
+        rating: movieForm.userRating,
+        emotionsCount: movieForm.emotions.length,
+      });
     } catch (error) {
       // Ошибка уже залогирована в утилите
     }
@@ -176,6 +204,25 @@ export const AddMovie: React.FC = () => {
 
       {/* 📐 БЛОКИ ПОСЛЕДОВАТЕЛЬНО ДРУГ ЗА ДРУГОМ */}
       <div className="space-y-4">
+        {/* Переключатель режимов: Diary / Watchlist */}
+        <div className="mb-1">
+          <div className="inline-flex w-full sm:w-auto rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              type="button"
+              className={`${mode === 'diary' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'} px-4 py-2 flex-1 sm:flex-initial`}
+              onClick={() => setMode('diary')}
+            >
+              {t.addMovieToDiary}
+            </button>
+            <button
+              type="button"
+              className={`${mode === 'watchlist' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'} px-4 py-2 border-l border-gray-200 flex-1 sm:flex-initial`}
+              onClick={() => setMode('watchlist')}
+            >
+              {t.addToWatchlist}
+            </button>
+          </div>
+        </div>
         {/* 🔎 БЛОК ПОИСКА ФИЛЬМОВ */}
         <div className={STYLE_OBJECTS.searchSection.container}>
           <h3 className={STYLE_OBJECTS.searchSection.header}>
@@ -202,7 +249,7 @@ export const AddMovie: React.FC = () => {
               {selectedMovie.id && isMovieInWatchlist(selectedMovie.id) && (
                 <div className={STYLE_OBJECTS.watchlistBadge.container}>
                   <CheckCircle className={STYLE_OBJECTS.watchlistBadge.icon} />
-                  <Link to="/watchlist" className={STYLE_OBJECTS.watchlistBadge.link}>Added to watchlist</Link>
+                  <Link to="/watchlist" className={STYLE_OBJECTS.watchlistBadge.link}>{t.addedToWatchlist}</Link>
                 </div>
               )}
             </div>
@@ -239,36 +286,59 @@ export const AddMovie: React.FC = () => {
         {/* 📝 ФОРМА ДОБАВЛЕНИЯ ФИЛЬМА */}
         <div>
           {/* 🔄 ИСПОЛЬЗУЕМ ПЕРЕИСПОЛЬЗУЕМЫЙ КОМПОНЕНТ ФОРМЫ */}
-          <MovieForm
-            userRating={movieForm.userRating}
-            notes={movieForm.notes}
-            watchedDate={movieForm.watchedDate}
-            emotions={movieForm.emotions}
-            emotionDescription={movieForm.emotionDescription}
-            onRatingChange={movieForm.setUserRating}
-            onNotesChange={movieForm.setNotes}
-            onWatchedDateChange={movieForm.setWatchedDate}
-            onEmotionClick={movieForm.handleEmotionClick}
-            onRemoveEmotion={movieForm.handleRemoveEmotion}
-            onEmotionDescriptionChange={movieForm.setEmotionDescription}
-            showDateFirst={true}
-          />
+          {mode === 'diary' && (
+            <MovieForm
+              userRating={movieForm.userRating}
+              notes={movieForm.notes}
+              watchedDate={movieForm.watchedDate}
+              emotions={movieForm.emotions}
+              emotionDescription={movieForm.emotionDescription}
+              onRatingChange={movieForm.setUserRating}
+              onNotesChange={movieForm.setNotes}
+              onWatchedDateChange={movieForm.setWatchedDate}
+              onEmotionClick={movieForm.handleEmotionClick}
+              onRemoveEmotion={movieForm.handleRemoveEmotion}
+              onEmotionDescriptionChange={movieForm.setEmotionDescription}
+              showDateFirst={true}
+            />
+          )}
 
           {/* Submit Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={!selectedMovie || !movieForm.watchedDate || addMovieMutation.isLoading}
-            className={`${!selectedMovie || !movieForm.watchedDate || addMovieMutation.isLoading ? STYLES.buttonDisabled : STYLES.buttonPrimary} w-full py-3 mt-4`}
-          >
-            {addMovieMutation.isLoading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                {t.addingMovie}
-              </div>
-            ) : (
-              t.addMovieToDiary
-            )}
-          </button>
+          {mode === 'diary' && (
+            <button
+              onClick={handleSubmit}
+              disabled={!selectedMovie || !movieForm.watchedDate || addMovieMutation.isLoading}
+              className={`${!selectedMovie || !movieForm.watchedDate || addMovieMutation.isLoading ? STYLES.buttonDisabled : STYLES.buttonPrimary} w-full py-3 mt-4`}
+            >
+              {addMovieMutation.isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {t.addingMovie}
+                </div>
+              ) : (
+                t.addMovieToDiary
+              )}
+            </button>
+          )}
+          {/* Add to Watchlist Button */}
+          {mode === 'watchlist' && (
+            <button
+              onClick={() => selectedMovie && handleAddToWatchlist(selectedMovie.id, selectedMovie.title)}
+              disabled={!selectedMovie}
+              className={`${!selectedMovie ? STYLES.buttonDisabled : STYLES.buttonWatchlist} w-full py-3 mt-3`}
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              {t.addToWatchlist}
+            </button>
+          )}
+
+          {/* Email Modal */}
+          <EmailModal
+            isOpen={showEmailModal}
+            onClose={handleCloseModal}
+            onSuccess={handleEmailSuccess}
+            movieTitle={pendingMovieTitle}
+          />
         </div>
       </div>
     </div>

@@ -5,7 +5,9 @@ import {
   Film, 
   Heart, 
   Calendar,
-  Star
+  Star,
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { api } from '../services/api';
@@ -13,11 +15,13 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { STYLES } from '../constants/styles';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { FeedbackWidget } from '../components/FeedbackWidget';
+import { track, AnalyticsEvents } from '../utils/analytics';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6', '#ec4899'];
 
 export const Dashboard: React.FC = () => {
-  const { t, language } = useTranslation();
+  const { t, language, translate } = useTranslation();
   const navigate = useNavigate();
   
   const { data: allMovies, isLoading: moviesLoading } = useQuery(
@@ -67,10 +71,22 @@ export const Dashboard: React.FC = () => {
     }
   );
   const showStatistics = moviesCount >= 5;
-  const showEmailBanner = moviesCount >= 3;
   
+  // Проверяем, был ли email уже отправлен (в localStorage)
   const [email, setEmail] = React.useState('');
   const [showEmailForm, setShowEmailForm] = React.useState(false);
+  const [emailSubmitted, setEmailSubmitted] = React.useState(false);
+  
+  // Проверяем localStorage при загрузке компонента
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('rewatch-email-submitted');
+    if (savedEmail === 'true') {
+      setEmailSubmitted(true);
+    }
+  }, []);
+  
+  // Показываем баннер только если есть фильмы И email еще не отправлен
+  const showEmailBanner = moviesCount >= 3 && !emailSubmitted;
 
   const { data: overviewStats, isLoading: statsLoading } = useQuery(
     'overview-stats',
@@ -131,16 +147,49 @@ export const Dashboard: React.FC = () => {
     if (topEmotions.length === 0) return null;
     
     const emotionText = topEmotions.map(e => e.type).join(' and ');
-    return `Looks like you prefer ${emotionText} stories 😉`;
+    return translate('looksLikeYouPrefer', { emotions: emotionText });
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Email submitted:', email);
-    // Save to localStorage
-    localStorage.setItem('rewatch-email', email);
-    setShowEmailForm(false);
-    alert('Thank you! Your email has been saved.');
+    
+    if (!email || !email.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+    
+    try {
+      // Отправляем email на сервер
+      const response = await api.post('/emails', { email });
+      
+      console.log('✅ Email submitted to server:', response.data);
+      
+      // Сохраняем в localStorage чтобы не показывать баннер снова
+      localStorage.setItem('rewatch-email', email);
+      localStorage.setItem('rewatch-email-submitted', 'true');
+      
+      // Трекинг: email отправлен
+      track(AnalyticsEvents.EmailSubmitted, {
+        source: 'dashboard',
+      });
+      
+      setEmailSubmitted(true);
+      setShowEmailForm(false);
+      setEmail(''); // Очищаем поле
+      
+      alert('Thank you! Your email has been saved. ❤️');
+    } catch (error: any) {
+      console.error('❌ Failed to submit email:', error);
+      
+      // В случае ошибки все равно сохраняем локально, чтобы не показывать баннер
+      localStorage.setItem('rewatch-email', email);
+      localStorage.setItem('rewatch-email-submitted', 'true');
+      
+      setEmailSubmitted(true);
+      setShowEmailForm(false);
+      
+      alert('Thank you! Your email has been saved locally. ❤️');
+    }
   };
 
   if (statsLoading || monthlyLoading || emotionLoading || moviesLoading) {
@@ -169,92 +218,35 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className={STYLES.page}>
-      {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className={`${STYLES.heading1} mb-2`}>
-          {t.welcomeBack}
-        </h1>
-        <p className={`${STYLES.textBody} text-sm sm:text-base`}>
-          {t.movieJourney}
-        </p>
-      </div>
-
-      {/* Top-Rated Movies Recommendations (when no movies logged yet) */}
-      {config.showRecommendations && moviesCount === 0 && (
-        <div className={`${STYLES.card} mb-8`}>
-          <h2 className={`${STYLES.heading2} mb-4`}>🎬 Start Your Movie Journey</h2>
-          <p className={`${STYLES.textBody} mb-4`}>Here are some critically acclaimed films to get you started:</p>
-          {popularLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="cursor-pointer group">
-                  <div className="aspect-[2/3] bg-gray-200 rounded-lg animate-pulse" />
-                  <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse" />
-                </div>
-              ))}
+      {/* Empty State - When no movies logged yet */}
+      {moviesCount === 0 && (
+        <div className={`${STYLES.card} mb-8 text-center`}>
+          <div className="max-w-2xl mx-auto py-8">
+            <div className="text-5xl mb-4">🎬</div>
+            <div className={`${STYLES.textBody} mb-6 text-gray-700`}>
+              {t.emptyStateIntro.split('🤩🔥🤯')[0]}
+              <div className="text-3xl my-3">🤩🔥🤯</div>
+              {t.emptyStateIntro.split('🤩🔥🤯')[1]}
             </div>
-          ) : popularMovies && popularMovies.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {popularMovies.map((movie: any) => {
-                // Логируем для отладки
-                if (process.env.NODE_ENV === 'development') {
-                  console.log('🎬 Movie in recommendations:', {
-                    title: movie.title,
-                    vote_average: movie.vote_average,
-                    vote_count: movie.vote_count
-                  });
-                }
-                
-                return (
-                  <div 
-                    key={movie.id} 
-                    className="cursor-pointer group"
-                    onClick={() => navigate(`/movie-tmdb/${movie.id}`)}
-                  >
-                    <div className="aspect-[2/3] bg-gray-200 rounded-lg overflow-hidden relative">
-                      {movie.poster_path ? (
-                        <img 
-                          src={`https://image.tmdb.org/t/p/w185${movie.poster_path}`}
-                          alt={movie.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          <Film className="h-12 w-12" />
-                        </div>
-                      )}
-                    </div>
-                    {/* Рейтинг и оценки - главная информация */}
-                    <div className="mt-2 flex items-center justify-center gap-3">
-                      {movie.vote_average !== undefined && movie.vote_average > 0 ? (
-                        <>
-                          <div className="flex items-center text-yellow-600">
-                            <Star className="h-4 w-4 fill-current" />
-                            <span className="text-base font-bold ml-1">{movie.vote_average.toFixed(1)}</span>
-                          </div>
-                          {movie.vote_count !== undefined && movie.vote_count > 0 && (
-                            <span className="text-sm text-gray-700 font-semibold">
-                              {movie.vote_count.toLocaleString()} {movie.vote_count === 1 ? t.vote : t.votes}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-xs text-gray-400">No ratings</span>
-                      )}
-                    </div>
-                    {/* Название фильма - меньше и ниже */}
-                    <div className="mt-1.5 text-xs text-gray-700 text-center line-clamp-2">
-                      {movie.title}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
+              <Link to="/add-movie" className={`${STYLES.buttonPrimary} inline-flex items-center`}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t.addFirstMovie}
+              </Link>
             </div>
-          ) : (
-            <p className="text-gray-500">Failed to load recommendations</p>
-          )}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <p className={`${STYLES.textBody} text-gray-600 mb-4`}>
+                {t.notSureWhereToStart}
+              </p>
+              <Link to="/recommendations" className={`${STYLES.buttonSecondary} inline-flex items-center`}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                {t.recommendations}
+              </Link>
+            </div>
+          </div>
         </div>
       )}
+
 
       {/* Email Banner */}
       {showEmailBanner && !showEmailForm && (
@@ -262,16 +254,16 @@ export const Dashboard: React.FC = () => {
           <div className="text-center py-6">
             <div className="text-5xl mb-3">💌</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Want to save your emotions and get mood-based picks?
+              {t.wantToSaveEmotions}
             </h3>
             <p className="text-gray-700 mb-4">
-              Add your email — I'll send you your movie memories ❤️
+              {t.addEmailDescription}
             </p>
             <button
               onClick={() => setShowEmailForm(true)}
               className="btn-primary"
             >
-              Add Email
+              {t.addEmail}
             </button>
           </div>
         </div>
@@ -283,27 +275,27 @@ export const Dashboard: React.FC = () => {
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Email
+                {t.yourEmail}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
+                placeholder={t.emailPlaceholder}
                 className="input-field"
                 required
               />
             </div>
             <div className="flex space-x-2">
               <button type="submit" className="btn-primary flex-1">
-                Send
+                {t.send}
               </button>
               <button
                 type="button"
                 onClick={() => setShowEmailForm(false)}
                 className="btn-secondary flex-1"
               >
-                Maybe Later
+                {t.maybeLater}
               </button>
             </div>
           </form>
@@ -368,8 +360,9 @@ export const Dashboard: React.FC = () => {
 
       {/* Charts Row */}
       {showStatistics ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           {/* Monthly Movies Chart */}
+          {/* ЗАКОММЕНТИРОВАНО: Movies Watched This Year
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Movies Watched This Year
@@ -390,8 +383,10 @@ export const Dashboard: React.FC = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
+          */}
 
           {/* Emotion Distribution */}
+          {/* ЗАКОММЕНТИРОВАНО: Emotion Distribution
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Emotion Distribution
@@ -416,6 +411,7 @@ export const Dashboard: React.FC = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
+          */}
         </div>
       ) : (
         <div className="mb-8">
@@ -439,7 +435,7 @@ export const Dashboard: React.FC = () => {
       {emotionsSummary.length > 0 && (
         <div className="card mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Your Emotions Over Time
+            {t.yourEmotionsOverTime}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
             {emotionsSummary.map(({ type, count }) => (
@@ -463,7 +459,7 @@ export const Dashboard: React.FC = () => {
                 </span>
                 <div>
                   <p className="font-medium text-gray-900 capitalize">{type}</p>
-                  <p className="text-sm text-gray-600">{count} {count === 1 ? 'time' : 'times'}</p>
+                  <p className="text-sm text-gray-600">{count} {count === 1 ? t.time : t.times}</p>
                 </div>
               </div>
             ))}
@@ -493,7 +489,7 @@ export const Dashboard: React.FC = () => {
         {recentMovies?.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentMovies.map((movie: any) => (
-              <div key={movie.id} className="movie-card">
+              <Link key={movie.id} to={`/movie/${movie.id}`} className="movie-card hover:shadow-lg transition-shadow cursor-pointer">
                 <div className="p-4">
                   <div className="flex items-start space-x-3">
                     {movie.poster_path ? (
@@ -525,19 +521,39 @@ export const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
           <div className="text-center py-8">
             <Film className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-4">No movies logged yet</p>
+            <p className="text-gray-600 mb-4">{t.noMoviesLogged}</p>
             <Link to="/add-movie" className="btn-primary">
-              Add Your First Movie
+              {t.addFirstMovie}
             </Link>
           </div>
         )}
       </div>
+      {/* Bottom Email Prompt (always if email not submitted) */}
+      {!emailSubmitted && !showEmailForm && (
+        <div className="card mt-8 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-200">
+          <div className="text-center py-6">
+            <div className="text-5xl mb-3">💌</div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {t.wantToOpenDiaryFromOtherDevices}
+            </h3>
+            <button
+              onClick={() => setShowEmailForm(true)}
+              className={STYLES.buttonPrimary}
+            >
+              {t.leaveEmail || 'Leave Email'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Widget */}
+      <FeedbackWidget />
     </div>
   );
 };
