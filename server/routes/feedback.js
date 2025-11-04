@@ -1,5 +1,7 @@
 const express = require('express');
 const db = require('../database');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 
@@ -108,6 +110,41 @@ router.get('/', (req, res) => {
   } catch (error) {
     console.error('Get feedback error:', error);
     res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
+});
+
+/**
+ * 📥 Скачать базу данных SQLite (для разработчика)
+ * GET /api/feedback/database
+ * 
+ * ⚠️ ЗАЩИТА: Требует Authorization header с токеном
+ */
+router.get('/database', (req, res) => {
+  try {
+    // Проверка авторизации через переменную окружения
+    const authToken = req.headers.authorization;
+    const adminToken = process.env.ADMIN_TOKEN || 'change-me-in-production';
+    
+    if (!authToken || authToken !== `Bearer ${adminToken}`) {
+      return res.status(401).json({ error: 'Unauthorized. Admin token required.' });
+    }
+
+    const dbPath = path.join(__dirname, '..', 'database.sqlite');
+    
+    if (!fs.existsSync(dbPath)) {
+      return res.status(404).json({ error: 'Database file not found' });
+    }
+
+    console.log('📥 Database download requested');
+    res.download(dbPath, 'database.sqlite', (err) => {
+      if (err) {
+        console.error('❌ Error downloading database:', err);
+        res.status(500).json({ error: 'Failed to download database' });
+      }
+    });
+  } catch (error) {
+    console.error('❌ Download database error:', error);
+    res.status(500).json({ error: 'Failed to download database' });
   }
 });
 
