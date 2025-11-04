@@ -7,8 +7,18 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
 console.log('🔧 Movies router initialized');
-console.log('🔑 TMDB_API_KEY status:', TMDB_API_KEY ? 'Configured' : 'Not configured');
-console.log('🔑 TMDB_API_KEY value:', TMDB_API_KEY === 'your_tmdb_api_key_here' ? 'Default placeholder' : 'Custom value');
+
+// Более точная проверка TMDB_API_KEY
+const isTmdbConfigured = TMDB_API_KEY && 
+                          TMDB_API_KEY !== 'your_tmdb_api_key_here' && 
+                          TMDB_API_KEY.trim() !== '';
+
+console.log('🔑 TMDB_API_KEY status:', isTmdbConfigured ? '✅ Configured' : '❌ Not configured');
+if (isTmdbConfigured) {
+  console.log('🔑 TMDB_API_KEY value: Custom value (hidden for security)');
+} else {
+  console.log('🔑 TMDB_API_KEY value: Not set or default placeholder');
+}
 
 // Get recommendations based on config type (gems, popular, trend)
 router.get('/popular', async (req, res) => {

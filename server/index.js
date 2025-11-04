@@ -110,6 +110,7 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🎬 Rewatch server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 CORS: ${isDevelopment ? 'Allowing all origins (dev)' : 'Production mode'}`);
 });
 
 
