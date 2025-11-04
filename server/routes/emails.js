@@ -8,8 +8,16 @@ const router = express.Router();
 async function sendToGoogleSheets(email, analytics = {}) {
   const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
   
+  console.log('🔍 sendToGoogleSheets called:', {
+    email: email,
+    webhookUrlExists: !!webhookUrl,
+    webhookUrlLength: webhookUrl ? webhookUrl.length : 0,
+    webhookUrlPreview: webhookUrl ? webhookUrl.substring(0, 50) + '...' : 'NOT SET'
+  });
+  
   if (!webhookUrl) {
     console.log('⚠️ GOOGLE_SHEETS_WEBHOOK_URL not configured, skipping webhook');
+    console.log('🔍 Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('SHEET')));
     return;
   }
   
@@ -127,7 +135,10 @@ router.post('/', (req, res) => {
           console.log(`📧 Email already exists, updated timestamp: ${email}`);
           
           // Отправляем в Google Sheets с аналитикой (если настроено)
-          sendToGoogleSheets(email, analytics).catch(() => {});
+          console.log('📤 About to call sendToGoogleSheets for existing email');
+          sendToGoogleSheets(email, analytics).catch((err) => {
+            console.error('❌ Error in sendToGoogleSheets callback:', err);
+          });
           
           res.json({ 
             message: 'Email already exists, timestamp updated',
@@ -146,7 +157,10 @@ router.post('/', (req, res) => {
           console.log(`📧 New email saved: ${email} (ID: ${this.lastID})`);
           
           // Отправляем в Google Sheets с аналитикой (если настроено)
-          sendToGoogleSheets(email, analytics).catch(() => {});
+          console.log('📤 About to call sendToGoogleSheets for new email');
+          sendToGoogleSheets(email, analytics).catch((err) => {
+            console.error('❌ Error in sendToGoogleSheets callback:', err);
+          });
           
           res.json({ 
             message: 'Email saved successfully',
