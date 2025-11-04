@@ -189,14 +189,11 @@ export const Dashboard: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Failed to submit email:', error);
       
-      // В случае ошибки все равно сохраняем локально, чтобы не показывать баннер
-      localStorage.setItem('rewatch-email', email);
-      localStorage.setItem('rewatch-email-submitted', 'true');
+      // Показываем ошибку пользователю
+      alert('Failed to save email. Please try again later.');
       
-      setEmailSubmitted(true);
-      setShowEmailForm(false);
-      
-      alert('Thank you! Your email has been saved locally. ❤️');
+      // НЕ сохраняем в localStorage если запрос не прошел
+      // setEmailSubmitted остается false - баннер будет показываться снова
     }
   };
 
