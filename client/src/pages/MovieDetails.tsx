@@ -187,7 +187,9 @@ export const MovieDetails: React.FC = () => {
         currentEmotions !== prevEmotions;
 
       if (!hasChanges && prevValuesRef.current) {
-        console.log('⏭️ No changes detected, skipping save');
+        console.log('⏭️ No changes detected, but navigating back anyway');
+        // Все равно возвращаемся на предыдущую страницу, даже если изменений нет
+        navigate(fromPath);
         return;
       }
 
