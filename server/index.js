@@ -111,6 +111,13 @@ app.listen(PORT, () => {
   console.log(`🎬 Rewatch server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 CORS: ${isDevelopment ? 'Allowing all origins (dev)' : 'Production mode'}`);
+  
+  // Проверка Google Sheets webhook
+  console.log('🔍 GOOGLE_SHEETS_WEBHOOK_URL check:', {
+    exists: !!process.env.GOOGLE_SHEETS_WEBHOOK_URL,
+    length: process.env.GOOGLE_SHEETS_WEBHOOK_URL?.length || 0,
+    preview: process.env.GOOGLE_SHEETS_WEBHOOK_URL?.substring(0, 50) || 'NOT SET'
+  });
 });
 
 
