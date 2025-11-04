@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Film, Calendar, Star, User, Tag, Trash2 } from 'lucide-react';
 import { STYLES } from '../constants/styles';
 import { getTMDBPosterUrl } from '../utils/movieUtils';
@@ -43,6 +43,10 @@ export const MovieListItem: React.FC<MovieListItemProps> = ({
   getEmotionBadgeClass,
   onRemove
 }) => {
+  const location = useLocation();
+  // Определяем путь, откуда пришли (для возврата после сохранения)
+  const fromPath = location.pathname;
+  
   // Получаем режиссера (если есть в crew или нужно будет получать из credits)
   const getDirector = () => {
     if (movie.director) return movie.director;
@@ -106,7 +110,7 @@ export const MovieListItem: React.FC<MovieListItemProps> = ({
           <Trash2 className="h-4 w-4" />
         </button>
       )}
-      <Link to={linkTo} className="flex items-center">
+      <Link to={linkTo} state={{ from: fromPath }} className="flex items-center">
       {/* Small Poster Icon */}
       <div className="relative w-16 h-20 sm:w-20 sm:h-28 flex-shrink-0 bg-gray-200 overflow-hidden rounded-l-xl">
         {movie.poster_path ? (

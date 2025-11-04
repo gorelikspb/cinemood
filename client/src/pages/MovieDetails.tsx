@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   ArrowLeft,
   Star, 
@@ -19,8 +19,12 @@ import { track, AnalyticsEvents } from '../utils/analytics';
 export const MovieDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { language, t } = useTranslation();
+  
+  // Получаем путь, откуда пришел пользователь (для возврата после сохранения)
+  const fromPath = location.state?.from || '/diary';
   
   const [showDescription, setShowDescription] = useState(false);
   
@@ -245,10 +249,13 @@ export const MovieDetails: React.FC = () => {
       // НЕ инвалидируем кэш для текущего фильма - это вызовет перезагрузку и сброс формы
       // Инвалидируем только список фильмов (для других страниц)
       queryClient.invalidateQueries('movies');
+      
+      // Возвращаемся на страницу, откуда пришел пользователь
+      navigate(fromPath);
     } catch (error) {
       console.error('❌ Failed to save movie and emotions:', error);
     }
-  }, [id, movie, movieForm.userRating, movieForm.notes, movieForm.emotions, movieForm.emotionDescription, movieForm.watchedDate, updateMovieMutation, deleteEmotionsMutation, addEmotionMutation, queryClient]);
+  }, [id, movie, movieForm.userRating, movieForm.notes, movieForm.emotions, movieForm.emotionDescription, movieForm.watchedDate, updateMovieMutation, deleteEmotionsMutation, addEmotionMutation, queryClient, navigate, fromPath]);
 
   // 😊 ОБРАБОТЧИК КЛИКА ПО ЭМОЦИИ С НЕМЕДЛЕННЫМ СОХРАНЕНИЕМ
   // При клике на эмодзи сразу сохраняем (без debounce)
