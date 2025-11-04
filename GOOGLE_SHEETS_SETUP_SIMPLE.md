@@ -59,6 +59,15 @@ function doPost(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+// Функция для тестирования (открытие в браузере)
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({ 
+    message: 'Google Sheets Webhook is working!',
+    status: 'ready',
+    note: 'This endpoint accepts POST requests only'
+  })).setMimeType(ContentService.MimeType.JSON);
+}
 ```
 
 **⚠️ ВАЖНО:** Копируйте только код внутри блока (без тройных кавычек ``` и слова javascript)! 
@@ -73,7 +82,9 @@ function doPost(e) {
 8. Нажмите **"Deploy"**
 9. **Авторизуйте** доступ (нажмите "Authorize access" → выберите ваш Google аккаунт → "Advanced" → "Go to Email Webhook" → "Allow")
 10. **СКОПИРУЙТЕ Web App URL** (он будет показан после деплоя)
-https://script.google.com/macros/s/AKfycbyHanI04ZzzSrrx7LPSitayQbfKM_yQGcr6BzG98cybcIWPRt9The3JtjBfMGYvrFBH/exec
+    - ⚠️ **ВАЖНО:** Используйте URL, который заканчивается на `/exec` (не `/dev`!)
+    - Пример правильного URL: `https://script.google.com/macros/s/AKfyc.../exec`
+    - ❌ НЕ используйте: `https://script.google.com/macros/s/AKfyc.../dev` (это тестовый URL)
 
 ### Шаг 3: Добавьте URL в Railway
 
