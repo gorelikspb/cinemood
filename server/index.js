@@ -15,12 +15,49 @@ const PORT = process.env.PORT || 5000;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // CORS configuration (должно быть ПЕРЕД rate limiting)
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CLIENT_URL 
-    : 'http://localhost:3000',
+const corsOptions = {
+  origin: function (origin, callback) {
+    // В development разрешаем localhost
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+      return;
+    }
+    
+    // В production разрешаем указанный CLIENT_URL или любой Netlify домен
+    const allowedOrigins = [
+      process.env.CLIENT_URL,
+      // Разрешаем любой Netlify домен
+      /^https:\/\/.*\.netlify\.app$/,
+      /^https:\/\/.*\.netlify\.app\/?$/
+    ].filter(Boolean);
+    
+    // Если origin не указан (например, Postman), разрешаем
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    
+    // Проверяем, разрешен ли origin
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return origin === allowed;
+      }
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Security middleware
 app.use(helmet());
