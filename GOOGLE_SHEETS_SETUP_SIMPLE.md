@@ -20,9 +20,9 @@
 
 1. В Google Sheets нажмите **"Extensions"** → **"Apps Script"**
 2. Удалите весь код, который там есть
-3. **СКОПИРУЙТЕ И ВСТАВЬТЕ** этот код:
+3. **СКОПИРУЙТЕ И ВСТАВЬТЕ** этот код (только код, без тройных кавычек!):
 
-```javascript
+```
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -60,6 +60,8 @@ function doPost(e) {
   }
 }
 ```
+
+**⚠️ ВАЖНО:** Копируйте только код внутри блока (без тройных кавычек ``` и слова javascript)! 
 
 4. Нажмите **"Save"** (дискетка) → назовите проект "Email Webhook"
 5. Нажмите **"Deploy"** → **"New deployment"**
