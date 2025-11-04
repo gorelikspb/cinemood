@@ -13,26 +13,49 @@ async function sendToGoogleSheets(email, analytics = {}) {
     return;
   }
   
+  console.log('📤 Sending email to Google Sheets:', {
+    email: email,
+    webhookUrl: webhookUrl.substring(0, 50) + '...', // Показываем только начало URL
+    source: analytics.source || 'unknown'
+  });
+  
   try {
-    await axios.post(webhookUrl, {
+    const payload = {
       email: email,
       timestamp: new Date().toISOString(),
-      source: analytics.source || 'unknown', // Dashboard, Watchlist, EmailModal
+      source: analytics.source || 'unknown',
       userAgent: analytics.userAgent || '',
       referrer: analytics.referrer || '',
       language: analytics.language || 'en',
       screenWidth: analytics.screenWidth || '',
       screenHeight: analytics.screenHeight || '',
-      deviceType: analytics.deviceType || 'desktop', // mobile, tablet, desktop
+      deviceType: analytics.deviceType || 'desktop',
       browser: analytics.browser || '',
       os: analytics.os || ''
-    }, {
-      timeout: 5000 // 5 секунд таймаут
+    };
+    
+    console.log('📦 Payload:', JSON.stringify(payload, null, 2));
+    
+    const response = await axios.post(webhookUrl, payload, {
+      timeout: 10000, // Увеличиваем таймаут до 10 секунд
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
-    console.log(`✅ Email sent to Google Sheets: ${email} (source: ${analytics.source || 'unknown'})`);
+    
+    console.log(`✅ Email sent to Google Sheets successfully: ${email}`);
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response data:', response.data);
   } catch (error) {
     // Не блокируем сохранение если webhook не работает
-    console.error(`⚠️ Failed to send to Google Sheets: ${error.message}`);
+    console.error(`❌ Failed to send to Google Sheets: ${error.message}`);
+    if (error.response) {
+      console.error('📥 Response status:', error.response.status);
+      console.error('📥 Response data:', error.response.data);
+    }
+    if (error.request) {
+      console.error('📤 Request was made but no response received');
+    }
   }
 }
 
