@@ -78,20 +78,36 @@ git push
 
 1. В Netlify Dashboard: **Site settings** → **Environment variables**
 2. Нажмите **"Add variable"**
-3. Добавьте:
+3. Добавьте следующие переменные:
    - **Key**: `REACT_APP_GA4_MEASUREMENT_ID`
-   - **Value**: `G-XXXXXXXXXX` (ваш Measurement ID из Google Analytics)
-4. Нажмите **"Save"**
+     **Value**: `G-4B5R6S0DLK` (ваш Measurement ID из Google Analytics)
+   
+   - **Key**: `REACT_APP_CLARITY_PROJECT_ID`
+     **Value**: `u0dil3s5nz` (ваш Project ID из Microsoft Clarity)
+   
+   - **Key**: `REACT_APP_API_URL` (опционально, если задеплоите backend)
+     **Value**: `https://your-backend-domain.com/api`
+4. Нажмите **"Save"** после добавления каждой переменной
 5. **Trigger deploy** → **Deploy site** (чтобы применить переменные)
 
 ---
 
-### Шаг 6: Проверьте работу!
+### Шаг 6: Обновите Microsoft Clarity
+
+1. Откройте [Microsoft Clarity Dashboard](https://clarity.microsoft.com/)
+2. Выберите ваш проект (`u0dil3s5nz`)
+3. **Settings** → **Project Settings** → **Overview**
+4. **Website URL**: вставьте ваш домен от Netlify (например: `https://cinemood-12345.netlify.app`)
+5. **Save** (даже если показывает ошибку про localhost - это нормально, скрипт работает)
+
+---
+
+### Шаг 7: Проверьте работу!
 
 1. Откройте ваш домен (например: `https://cinemood-12345.netlify.app`)
 2. Выполните какое-то действие (добавьте фильм)
-3. Откройте Google Analytics → **Realtime** → **Events**
-4. Вы должны увидеть события!
+3. **Google Analytics**: Откройте → **Realtime** → **Events** → вы должны увидеть события!
+4. **Microsoft Clarity**: Откройте Dashboard → **Recordings** → через 5-10 минут появятся записи сессий
 
 ---
 
@@ -100,7 +116,8 @@ git push
 Теперь у вас есть:
 - ✅ Бесплатный домен на Netlify
 - ✅ Автоматический деплой при каждом `git push`
-- ✅ Работающий Google Analytics
+- ✅ Работающий Google Analytics 4
+- ✅ Работающий Microsoft Clarity (записи сессий, heatmaps)
 - ✅ HTTPS (SSL) автоматически
 
 ---
