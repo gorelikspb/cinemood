@@ -479,11 +479,13 @@ export const MovieDetails: React.FC = () => {
                   className="group cursor-pointer"
                   onClick={() => {
                     // Трекинг: открыт похожий фильм
-                    track(AnalyticsEvents.OpenSimilar, {
-                      movieId: id,
-                      similarMovieId: similar.id,
-                      similarMovieTitle: similar.title,
-                    });
+                    if (id) {
+                      track(AnalyticsEvents.OpenSimilar, {
+                        movieId: id,
+                        similarMovieId: similar.id,
+                        similarMovieTitle: similar.title || 'Unknown',
+                      });
+                    }
                     navigate(`/movie-tmdb/${similar.id}`);
                   }}
                 >

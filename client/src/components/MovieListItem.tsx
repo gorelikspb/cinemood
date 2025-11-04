@@ -79,18 +79,18 @@ export const MovieListItem: React.FC<MovieListItemProps> = ({
   const director = getDirector();
   const genresText = getGenresText();
 
-  // Отладочное логирование (временно)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🎬 MovieListItem rendering:', {
-      title: movie.title,
-      director,
-      genresText,
-      showDirector,
-      showGenres,
-      showOverview,
-      overview: movie.overview
-    });
-  }
+  // Отладочное логирование отключено
+  // if (process.env.NODE_ENV === 'development') {
+  //   console.log('🎬 MovieListItem rendering:', {
+  //     title: movie.title,
+  //     director,
+  //     genresText,
+  //     showDirector,
+  //     showGenres,
+  //     showOverview,
+  //     overview: movie.overview
+  //   });
+  // }
 
   const tmdbId = movie.tmdb_id || movie.id;
 

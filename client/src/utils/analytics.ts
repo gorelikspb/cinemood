@@ -12,6 +12,7 @@ declare global {
   interface Window {
     dataLayer: any[];
     gtag: (...args: any[]) => void;
+    clarity?: (...args: any[]) => void;
   }
 }
 
@@ -23,7 +24,15 @@ declare global {
 export const track = (event: string, params?: Record<string, string | number>): void => {
   // Проверяем, включена ли аналитика
   if (!ANALYTICS_CONFIG.enabled) {
+    if (ANALYTICS_CONFIG.debug) {
+      console.log('📊 Analytics disabled, skipping event:', event);
+    }
     return;
+  }
+
+  // Логируем только если включен дебаг
+  if (ANALYTICS_CONFIG.debug) {
+    console.log('📊 Track event:', event, params || '');
   }
 
   // Проверяем, доступен ли gtag
@@ -31,16 +40,33 @@ export const track = (event: string, params?: Record<string, string | number>): 
     try {
       if (params) {
         window.gtag('event', event, params);
+        if (ANALYTICS_CONFIG.debug) {
+          console.log('✅ Event sent to GA:', event, params);
+        }
       } else {
         window.gtag('event', event);
+        if (ANALYTICS_CONFIG.debug) {
+          console.log('✅ Event sent to GA:', event);
+        }
       }
     } catch (error) {
-      console.error('Analytics tracking error:', error);
+      console.error('❌ Analytics tracking error:', error);
     }
   } else {
-    // В режиме разработки логируем события, если gtag не доступен
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Track event:', event, params || '');
+    // Только в режиме дебага показываем предупреждения
+    if (ANALYTICS_CONFIG.debug) {
+      console.warn('⚠️ gtag not available. Is Google Analytics loaded?');
+      console.warn('   Check if Measurement ID is correct:', ANALYTICS_CONFIG.measurementId);
+    }
+  }
+
+  // Отправляем событие в Microsoft Clarity (если подключено)
+  if (typeof window !== 'undefined' && typeof window.clarity === 'function' && ANALYTICS_CONFIG.clarityEnabled) {
+    try {
+      // clarity('event', name, params)
+      window.clarity('event', event, params || {});
+    } catch (error) {
+      // Ошибки Clarity не критичны
     }
   }
 };

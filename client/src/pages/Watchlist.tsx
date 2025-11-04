@@ -47,7 +47,6 @@ export const Watchlist: React.FC = () => {
         })
       );
       const filtered = movieDetails.filter(Boolean);
-      console.log('📊 Watchlist movies loaded:', filtered.length);
       return filtered;
     },
     {
@@ -152,7 +151,6 @@ export const Watchlist: React.FC = () => {
       {filteredMovies.length > 0 ? (
         <div className="space-y-3">
           {filteredMovies.map((movie: any) => {
-            console.log('🎬 Rendering movie item:', movie.title, movie);
             return (
               <MovieListItem
                 key={movie.tmdb_id || movie.id}

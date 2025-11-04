@@ -98,10 +98,9 @@ export const addToWatchlist = (tmdbId: string | number): void => {
   const watchlist = JSON.parse(localStorage.getItem('rewatch-watchlist') || '[]');
   
   // Добавляем только если еще нет в списке
-  if (!watchlist.includes(tmdbId.toString())) {
-    watchlist.push(tmdbId.toString());
-    localStorage.setItem('rewatch-watchlist', JSON.stringify(watchlist));
-    console.log(`➕ Added to watchlist: ${tmdbId}`);
+      if (!watchlist.includes(tmdbId.toString())) {
+        watchlist.push(tmdbId.toString());
+        localStorage.setItem('rewatch-watchlist', JSON.stringify(watchlist));
   } else {
     console.log(`⚠️ Movie ${tmdbId} already in watchlist`);
   }
@@ -121,7 +120,6 @@ export const removeFromWatchlist = (tmdbId: string | number): void => {
   const watchlist = JSON.parse(localStorage.getItem('rewatch-watchlist') || '[]');
   const updatedWatchlist = watchlist.filter((id: string) => id !== tmdbId.toString());
   localStorage.setItem('rewatch-watchlist', JSON.stringify(updatedWatchlist));
-  console.log(`➖ Removed from watchlist: ${tmdbId}`);
 };
 
 /**
@@ -146,7 +144,6 @@ export const getMovieYear = (releaseDate: string | null): string => {
   
   try {
     const year = new Date(releaseDate).getFullYear().toString();
-    console.log(`📅 Extracted year ${year} from date ${releaseDate}`);
     return year;
   } catch (error) {
     console.warn(`⚠️ Invalid date format: ${releaseDate}`);
@@ -182,7 +179,6 @@ export const getMovieYear = (releaseDate: string | null): string => {
  */
 export const getTMDBPosterUrl = (posterPath: string, size: string = 'w500'): string => {
   const fullUrl = `https://image.tmdb.org/t/p/${size}${posterPath}`;
-  console.log(`🖼️ Generated poster URL (${size}):`, fullUrl);
   return fullUrl;
 };
 
@@ -208,12 +204,10 @@ export const getTMDBPosterUrl = (posterPath: string, size: string = 'w500'): str
  * @param delay - Задержка перед прокруткой в миллисекундах
  */
 export const scrollToElement = (elementId: string, delay: number = 100): void => {
-  console.log(`📜 Scheduling scroll to #${elementId} in ${delay}ms`);
   
   setTimeout(() => {
     const element = document.getElementById(elementId);
     if (element) {
-      console.log(`✅ Scrolling to element:`, element);
       element.scrollIntoView({ 
         behavior: 'smooth',    // Плавная анимация
         block: 'nearest'       // Прокрутить минимально необходимое расстояние
