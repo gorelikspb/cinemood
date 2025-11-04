@@ -14,6 +14,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// Trust proxy для Railway (исправляет ошибку rate-limiter)
+app.set('trust proxy', 1);
+
 // CORS configuration (должно быть ПЕРЕД rate limiting)
 const corsOptions = {
   origin: function (origin, callback) {
