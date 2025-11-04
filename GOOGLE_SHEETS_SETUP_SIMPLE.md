@@ -6,9 +6,14 @@
 
 1. Откройте https://sheets.google.com
 2. Нажмите **"Blank"** (новая таблица)
-3. В первой строке (A1, B1, C1) введите:
+3. В первой строке добавьте заголовки:
    ```
-   Email | Дата добавления | Время
+   Email | Дата | Время | Источник | Устройство | Браузер | ОС | Размер экрана | Язык
+   ```
+   
+   **Или сокращенный вариант:**
+   ```
+   Email | Дата | Время | Источник | Устройство | Браузер
    ```
 
 ### Шаг 2: Создайте Webhook (СКОПИРУЙТЕ И ВСТАВЬТЕ КОД)
@@ -26,10 +31,22 @@ function doPost(e) {
     
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     
+    // Форматируем размер экрана
+    const screenSize = data.screenWidth && data.screenHeight 
+      ? `${data.screenWidth}x${data.screenHeight}` 
+      : '';
+    
+    // Добавляем строку с данными
     sheet.appendRow([
       email,
       new Date(timestamp).toLocaleDateString('ru-RU'),
-      new Date(timestamp).toLocaleTimeString('ru-RU')
+      new Date(timestamp).toLocaleTimeString('ru-RU'),
+      data.source || 'unknown',        // Источник: Dashboard, Watchlist, EmailModal
+      data.deviceType || 'desktop',     // mobile, tablet, desktop
+      data.browser || '',               // Chrome, Firefox, Safari
+      data.os || '',                    // Windows, Mac, iOS, Android
+      screenSize,                       // 1920x1080
+      data.language || 'en'             // ru, en
     ]);
     
     return ContentService.createTextOutput(JSON.stringify({ 

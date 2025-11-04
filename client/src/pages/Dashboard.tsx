@@ -16,6 +16,7 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 import { FeedbackWidget } from '../components/FeedbackWidget';
 import { track, AnalyticsEvents } from '../utils/analytics';
+import { getEmailAnalytics } from '../utils/emailAnalytics';
 
 // COLORS используется для закомментированных графиков, пока оставляем
 // const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6', '#ec4899'];
@@ -160,8 +161,14 @@ export const Dashboard: React.FC = () => {
     }
     
     try {
-      // Отправляем email на сервер
-      const response = await api.post('/emails', { email });
+      // Собираем аналитику
+      const analytics = getEmailAnalytics('Dashboard');
+      
+      // Отправляем email на сервер с аналитикой
+      const response = await api.post('/emails', {
+        email,
+        ...analytics
+      });
       
       console.log('✅ Email submitted to server:', response.data);
       

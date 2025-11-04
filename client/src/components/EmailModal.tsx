@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { STYLES } from '../constants/styles';
 import { useTranslation } from '../contexts/LanguageContext';
 import { track, AnalyticsEvents } from '../utils/analytics';
+import { getEmailAnalytics } from '../utils/emailAnalytics';
 
 interface EmailModalProps {
   isOpen: boolean;
@@ -50,8 +51,14 @@ export const EmailModal: React.FC<EmailModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Отправляем email на сервер
-      await api.post('/emails', { email });
+      // Собираем аналитику
+      const analytics = getEmailAnalytics('EmailModal');
+      
+      // Отправляем email на сервер с аналитикой
+      await api.post('/emails', {
+        email,
+        ...analytics
+      });
       
       // Сохраняем в localStorage, что email был отправлен
       localStorage.setItem('rewatch-email-submitted', 'true');

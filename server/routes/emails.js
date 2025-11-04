@@ -4,8 +4,8 @@ const axios = require('axios');
 
 const router = express.Router();
 
-// Функция для отправки email в Google Sheets
-async function sendToGoogleSheets(email) {
+// Функция для отправки email в Google Sheets с аналитикой
+async function sendToGoogleSheets(email, analytics = {}) {
   const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
   
   if (!webhookUrl) {
@@ -16,11 +16,20 @@ async function sendToGoogleSheets(email) {
   try {
     await axios.post(webhookUrl, {
       email: email,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      source: analytics.source || 'unknown', // Dashboard, Watchlist, EmailModal
+      userAgent: analytics.userAgent || '',
+      referrer: analytics.referrer || '',
+      language: analytics.language || 'en',
+      screenWidth: analytics.screenWidth || '',
+      screenHeight: analytics.screenHeight || '',
+      deviceType: analytics.deviceType || 'desktop', // mobile, tablet, desktop
+      browser: analytics.browser || '',
+      os: analytics.os || ''
     }, {
       timeout: 5000 // 5 секунд таймаут
     });
-    console.log(`✅ Email sent to Google Sheets: ${email}`);
+    console.log(`✅ Email sent to Google Sheets: ${email} (source: ${analytics.source || 'unknown'})`);
   } catch (error) {
     // Не блокируем сохранение если webhook не работает
     console.error(`⚠️ Failed to send to Google Sheets: ${error.message}`);
@@ -30,15 +39,50 @@ async function sendToGoogleSheets(email) {
 /**
  * 📧 Сохранить email пользователя
  * POST /api/emails
- * Body: { email: string }
+ * Body: { 
+ *   email: string,
+ *   source?: string,      // Dashboard, Watchlist, EmailModal
+ *   userAgent?: string,   // Браузер и устройство
+ *   referrer?: string,     // Откуда пришел
+ *   language?: string,     // Язык интерфейса
+ *   screenWidth?: number,  // Ширина экрана
+ *   screenHeight?: number, // Высота экрана
+ *   deviceType?: string,  // mobile, tablet, desktop
+ *   browser?: string,      // Chrome, Firefox, Safari
+ *   os?: string           // Windows, Mac, iOS, Android
+ * }
  */
 router.post('/', (req, res) => {
   try {
-    const { email } = req.body;
+    const { 
+      email, 
+      source, 
+      userAgent, 
+      referrer, 
+      language,
+      screenWidth,
+      screenHeight,
+      deviceType,
+      browser,
+      os
+    } = req.body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
       return res.status(400).json({ error: 'Valid email is required' });
     }
+
+    // Собираем аналитику
+    const analytics = {
+      source: source || 'unknown',
+      userAgent: userAgent || req.headers['user-agent'] || '',
+      referrer: referrer || req.headers.referer || '',
+      language: language || 'en',
+      screenWidth: screenWidth || '',
+      screenHeight: screenHeight || '',
+      deviceType: deviceType || 'desktop',
+      browser: browser || '',
+      os: os || ''
+    };
 
     // Проверяем, есть ли уже такой email
     const checkSql = 'SELECT id FROM emails WHERE email = ?';
@@ -59,8 +103,8 @@ router.post('/', (req, res) => {
           }
           console.log(`📧 Email already exists, updated timestamp: ${email}`);
           
-          // Отправляем в Google Sheets (если настроено)
-          sendToGoogleSheets(email).catch(() => {});
+          // Отправляем в Google Sheets с аналитикой (если настроено)
+          sendToGoogleSheets(email, analytics).catch(() => {});
           
           res.json({ 
             message: 'Email already exists, timestamp updated',
@@ -78,8 +122,8 @@ router.post('/', (req, res) => {
           }
           console.log(`📧 New email saved: ${email} (ID: ${this.lastID})`);
           
-          // Отправляем в Google Sheets (если настроено)
-          sendToGoogleSheets(email).catch(() => {});
+          // Отправляем в Google Sheets с аналитикой (если настроено)
+          sendToGoogleSheets(email, analytics).catch(() => {});
           
           res.json({ 
             message: 'Email saved successfully',
