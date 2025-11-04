@@ -24,7 +24,15 @@ export const MovieDetails: React.FC = () => {
   const { language, t } = useTranslation();
   
   // Получаем путь, откуда пришел пользователь (для возврата после сохранения)
-  const fromPath = location.state?.from || '/diary';
+  // Используем location.state если есть, иначе текущий путь без /movie/..., иначе /diary
+  const fromPath = location.state?.from || 
+    (location.pathname.includes('/movie/') ? location.pathname.split('/movie/')[0] || '/diary' : '/diary');
+  
+  console.log('📍 MovieDetails fromPath:', {
+    stateFrom: location.state?.from,
+    currentPath: location.pathname,
+    calculatedFromPath: fromPath
+  });
   
   const [showDescription, setShowDescription] = useState(false);
   
