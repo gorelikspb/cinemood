@@ -42,9 +42,8 @@ export const MovieDiary: React.FC = () => {
     }
   );
 
-  const filteredMovies = movies?.filter((movie: any) =>
-    movie.title.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Поиск закомментирован, используем все фильмы
+  const filteredMovies = movies || [];
 
   const getEmotionBadgeClass = (emotion: string) => {
     const emotionClasses: { [key: string]: string } = {
@@ -208,20 +207,15 @@ export const MovieDiary: React.FC = () => {
         <div className="text-center py-12">
           <Film className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchTerm ? t.noMoviesFound : t.noMoviesLogged}
+            {t.noMoviesLogged}
           </h3>
           <p className="text-gray-600 mb-4">
-            {searchTerm 
-              ? t.tryAdjustingSearch
-              : t.startBuildingDiary
-            }
+            {t.startBuildingDiary}
           </p>
-          {!searchTerm && (
-            <Link to="/add-movie" className={STYLES.buttonPrimary}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t.addFirstMovie}
-            </Link>
-          )}
+          <Link to="/add-movie" className={STYLES.buttonPrimary}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t.addFirstMovie}
+          </Link>
         </div>
       )}
 
