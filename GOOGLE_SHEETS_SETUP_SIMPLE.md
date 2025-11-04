@@ -73,17 +73,20 @@ function doPost(e) {
 8. Нажмите **"Deploy"**
 9. **Авторизуйте** доступ (нажмите "Authorize access" → выберите ваш Google аккаунт → "Advanced" → "Go to Email Webhook" → "Allow")
 10. **СКОПИРУЙТЕ Web App URL** (он будет показан после деплоя)
+https://script.google.com/macros/s/AKfycbyHanI04ZzzSrrx7LPSitayQbfKM_yQGcr6BzG98cybcIWPRt9The3JtjBfMGYvrFBH/exec
 
 ### Шаг 3: Добавьте URL в Railway
 
 1. Откройте Railway Dashboard → ваш проект
-2. **Variables** → **"New Variable"**
-3. Добавьте:
+2. Откройте **Variables** (или **Environment Variables**, или **Shared Variables**)
+   - ⚠️ **НЕ** используйте раздел "Webhooks" - это для другого!
+3. Нажмите **"New Variable"** или **"Add Variable"**
+4. Добавьте:
    - **Name**: `GOOGLE_SHEETS_WEBHOOK_URL`
-   - **Value**: вставьте URL из шага 2
-4. Нажмите **"Save"**
+   - **Value**: вставьте ваш Web App URL (из шага 2)
+5. Нажмите **"Save"**
 
-Railway автоматически перезапустит сервер.
+Railway автоматически перезапустит сервер после добавления переменной.
 
 ---
 
