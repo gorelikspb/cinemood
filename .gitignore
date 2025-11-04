@@ -46,3 +46,7 @@ coverage/
 *.temp
 .cache/
 
+# Private documentation (contains sensitive info)
+HOW_TO_GET_EMAILS.md
+PRIVATE_*.md
+

@@ -68,9 +68,19 @@ router.post('/', (req, res) => {
  * GET /api/emails
  * Query params: 
  *   - format: 'json' | 'csv' (default: 'json')
+ * 
+ * ⚠️ ЗАЩИТА: Требует Authorization header с токеном
  */
 router.get('/', (req, res) => {
   try {
+    // Проверка авторизации через переменную окружения
+    const authToken = req.headers.authorization;
+    const adminToken = process.env.ADMIN_TOKEN || 'change-me-in-production';
+    
+    if (!authToken || authToken !== `Bearer ${adminToken}`) {
+      return res.status(401).json({ error: 'Unauthorized. Admin token required.' });
+    }
+    
     const { format = 'json' } = req.query;
 
     const sql = 'SELECT id, email, created_at, updated_at FROM emails ORDER BY created_at DESC';

@@ -80,10 +80,10 @@ git push
 2. Нажмите **"Add variable"**
 3. Добавьте следующие переменные:
    - **Key**: `REACT_APP_GA4_MEASUREMENT_ID`
-     **Value**: `G-4B5R6S0DLK` (ваш Measurement ID из Google Analytics)
+     **Value**: `G-XXXXXXXXXX` (ваш Measurement ID из Google Analytics)
    
    - **Key**: `REACT_APP_CLARITY_PROJECT_ID`
-     **Value**: `u0dil3s5nz` (ваш Project ID из Microsoft Clarity)
+     **Value**: `ваш-project-id` (ваш Project ID из Microsoft Clarity)
    
    - **Key**: `REACT_APP_API_URL` (опционально, если задеплоите backend)
      **Value**: `https://your-backend-domain.com/api`
@@ -95,7 +95,7 @@ git push
 ### Шаг 6: Обновите Microsoft Clarity
 
 1. Откройте [Microsoft Clarity Dashboard](https://clarity.microsoft.com/)
-2. Выберите ваш проект (`u0dil3s5nz`)
+2. Выберите ваш проект
 3. **Settings** → **Project Settings** → **Overview**
 4. **Website URL**: вставьте ваш домен от Netlify (например: `https://cinemood-12345.netlify.app`)
 5. **Save** (даже если показывает ошибку про localhost - это нормально, скрипт работает)
