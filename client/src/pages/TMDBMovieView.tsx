@@ -6,7 +6,6 @@ import {
   Calendar,
   Film,
   Plus,
-  Mail,
   Clock
 } from 'lucide-react';
 import { api } from '../services/api';

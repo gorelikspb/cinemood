@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import './index.css';
 import App from './App';
-import { ANALYTICS_CONFIG } from './config/analytics';
 
 // Google Analytics 4 инициализируется в index.html
 // Проверка доступности gtag только в режиме дебага

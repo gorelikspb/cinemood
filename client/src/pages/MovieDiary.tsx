@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { Link } from 'react-router-dom';
 import { 
-  Search, 
-  Star, 
-  Calendar,
   Film,
   Plus
 } from 'lucide-react';
@@ -16,7 +13,7 @@ import { EmailModal } from '../components/EmailModal';
 
 export const MovieDiary: React.FC = () => {
   const { language, t } = useTranslation();
-  const [searchTerm, setSearchTerm] = useState('');
+  // const [searchTerm, setSearchTerm] = useState(''); // Поиск закомментирован
   const [sortBy, setSortBy] = useState('watched_date');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [currentPage] = useState(1);

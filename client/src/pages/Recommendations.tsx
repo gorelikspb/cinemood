@@ -19,7 +19,7 @@ import { getGenresFromIds } from '../utils/movieUtils';
  * Настройка типа: client/src/config.ts (recommendationType)
  */
 const Recommendations: React.FC = () => {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // Fetch recommendations based on config.recommendationType

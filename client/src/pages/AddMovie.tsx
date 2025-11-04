@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from 'react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Search,    // Search icon for movie search input
   Film,      // Placeholder icon for movies without posters
   ArrowLeft, // Back navigation button
   CheckCircle, // Watchlist status indicator
@@ -11,7 +10,6 @@ import {
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useTranslation } from '../contexts/LanguageContext';
-import { EMOTION_TYPES, getEmotionData } from '../constants/emotions';
 import { STYLES, STYLE_OBJECTS } from '../constants/styles';
 import { 
   fetchMovieDetails, 

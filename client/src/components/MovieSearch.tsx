@@ -3,7 +3,7 @@ import { Search, Film } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useMovieSearch } from '../hooks/useMovieSearch';
 import { getTMDBPosterUrl, getMovieYear } from '../utils/movieUtils';
-import { STYLES, STYLE_OBJECTS } from '../constants/styles';
+import { STYLE_OBJECTS } from '../constants/styles';
 
 /**
  * 🔍 ПЕРЕИСПОЛЬЗУЕМЫЙ КОМПОНЕНТ ПОИСКА ФИЛЬМОВ

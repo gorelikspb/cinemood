@@ -3,7 +3,6 @@ import { useQuery } from 'react-query';
 import { Link } from 'react-router-dom';
 import { 
   Clock,
-  Film,
   Plus,
   Search
 } from 'lucide-react';

@@ -5,7 +5,8 @@
   base = "client"
   
   # Команда для установки зависимостей и сборки
-  command = "npm install && npm run build"
+  # ESLINT_NO_DEV_ERRORS=true - warnings не блокируют сборку
+  command = "npm install && ESLINT_NO_DEV_ERRORS=true npm run build"
   
   # Директория с собранным проектом
   publish = "build"

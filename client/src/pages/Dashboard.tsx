@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from 'react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { 
   Film, 
   Heart, 
@@ -9,7 +9,6 @@ import {
   Plus,
   Sparkles
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { api } from '../services/api';
 import { useTranslation } from '../contexts/LanguageContext';
 import { STYLES } from '../constants/styles';
@@ -22,7 +21,6 @@ const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6'
 
 export const Dashboard: React.FC = () => {
   const { t, language, translate } = useTranslation();
-  const navigate = useNavigate();
   
   const { data: allMovies, isLoading: moviesLoading } = useQuery(
     ['recent-movies', language],
@@ -40,7 +38,7 @@ export const Dashboard: React.FC = () => {
   const moviesCount = allMovies?.length || 0;
   
   // Get popular movies when user has no movies (if enabled in config)
-  const { data: popularMovies, isLoading: popularLoading } = useQuery(
+  const { isLoading: popularLoading } = useQuery(
     ['popular-movies', language, config.recommendationType, config.gems],
     () => {
       const params: any = {
@@ -94,7 +92,7 @@ export const Dashboard: React.FC = () => {
     { enabled: showStatistics }
   );
 
-  const { data: monthlyStats, isLoading: monthlyLoading } = useQuery(
+  const { isLoading: monthlyLoading } = useQuery(
     'monthly-stats',
     () => api.get('/stats/monthly').then(res => res.data),
     { enabled: showStatistics }
@@ -210,11 +208,6 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  const pieData = emotionStats?.map((emotion: any, index: number) => ({
-    name: emotion.emotion_type,
-    value: emotion.count,
-    color: COLORS[index % COLORS.length]
-  })) || [];
 
   return (
     <div className={STYLES.page}>
