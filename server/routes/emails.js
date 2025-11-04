@@ -1,7 +1,31 @@
 const express = require('express');
 const db = require('../database');
+const axios = require('axios');
 
 const router = express.Router();
+
+// Функция для отправки email в Google Sheets
+async function sendToGoogleSheets(email) {
+  const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+  
+  if (!webhookUrl) {
+    console.log('⚠️ GOOGLE_SHEETS_WEBHOOK_URL not configured, skipping webhook');
+    return;
+  }
+  
+  try {
+    await axios.post(webhookUrl, {
+      email: email,
+      timestamp: new Date().toISOString()
+    }, {
+      timeout: 5000 // 5 секунд таймаут
+    });
+    console.log(`✅ Email sent to Google Sheets: ${email}`);
+  } catch (error) {
+    // Не блокируем сохранение если webhook не работает
+    console.error(`⚠️ Failed to send to Google Sheets: ${error.message}`);
+  }
+}
 
 /**
  * 📧 Сохранить email пользователя
@@ -34,6 +58,10 @@ router.post('/', (req, res) => {
             return res.status(500).json({ error: 'Failed to update email' });
           }
           console.log(`📧 Email already exists, updated timestamp: ${email}`);
+          
+          // Отправляем в Google Sheets (если настроено)
+          sendToGoogleSheets(email).catch(() => {});
+          
           res.json({ 
             message: 'Email already exists, timestamp updated',
             email: email,
@@ -49,6 +77,10 @@ router.post('/', (req, res) => {
             return res.status(500).json({ error: 'Failed to save email' });
           }
           console.log(`📧 New email saved: ${email} (ID: ${this.lastID})`);
+          
+          // Отправляем в Google Sheets (если настроено)
+          sendToGoogleSheets(email).catch(() => {});
+          
           res.json({ 
             message: 'Email saved successfully',
             email: email,
