@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from 'react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Film, 
   Heart, 
@@ -22,6 +22,8 @@ import { track, AnalyticsEvents } from '../utils/analytics';
 
 export const Dashboard: React.FC = () => {
   const { t, language, translate } = useTranslation();
+  const location = useLocation();
+  const fromPath = location.pathname;
   
   const { data: allMovies, isLoading: moviesLoading } = useQuery(
     ['recent-movies', language],
@@ -483,7 +485,7 @@ export const Dashboard: React.FC = () => {
         {recentMovies?.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentMovies.map((movie: any) => (
-              <Link key={movie.id} to={`/movie/${movie.id}`} className="movie-card hover:shadow-lg transition-shadow cursor-pointer">
+              <Link key={movie.id} to={`/movie/${movie.id}`} state={{ from: fromPath }} className="movie-card hover:shadow-lg transition-shadow cursor-pointer">
                 <div className="p-4">
                   <div className="flex items-start space-x-3">
                     {movie.poster_path ? (
