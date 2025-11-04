@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Google Sheets Webhook</title>
+</head>
+<body>
+  <h1>Test Google Sheets Webhook</h1>
+  <button onclick="testWebhook()">Test Webhook</button>
+  <div id="result"></div>
+
+  <script>
+    async function testWebhook() {
+      const webhookUrl = 'https://script.google.com/macros/s/AKfycbyHanI04ZzzSrrx7LPSitayQbfKM_yQGcr6BzG98cybcIWPRt9The3JtjBfMGYvrFBH/exec'; // Замените на ваш URL
+      
+      const payload = {
+        email: 'test@example.com',
+        timestamp: new Date().toISOString(),
+        source: 'test',
+        deviceType: 'desktop',
+        browser: 'Chrome',
+        os: 'Windows',
+        language: 'en',
+        screenWidth: 1920,
+        screenHeight: 1080
+      };
+
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        document.getElementById('result').innerHTML = 
+          '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        
+        if (result.success) {
+          alert('✅ Success! Check your Google Sheet!');
+        }
+      } catch (error) {
+        document.getElementById('result').innerHTML = 
+          '<pre style="color: red;">Error: ' + error.message + '</pre>';
+      }
+    }
+  </script>
+</body>
+</html>
