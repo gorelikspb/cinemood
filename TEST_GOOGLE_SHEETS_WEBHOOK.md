@@ -61,6 +61,24 @@
 
 ### Вариант Б: Используйте curl (в терминале)
 
+**Для PowerShell (Windows):**
+```powershell
+$body = @{
+    email = "test@example.com"
+    timestamp = "2024-01-15T12:00:00Z"
+    source = "test"
+    deviceType = "desktop"
+    browser = "Chrome"
+    os = "Windows"
+    language = "en"
+    screenWidth = 1920
+    screenHeight = 1080
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "ВАШ_URL_С_/exec" -Method Post -Body $body -ContentType "application/json"
+```
+
+**Для bash/Linux/Mac:**
 ```bash
 curl -X POST "ВАШ_URL_С_/exec" \
   -H "Content-Type: application/json" \
