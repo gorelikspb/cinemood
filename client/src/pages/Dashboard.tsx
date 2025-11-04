@@ -17,7 +17,8 @@ import { logger } from '../utils/logger';
 import { FeedbackWidget } from '../components/FeedbackWidget';
 import { track, AnalyticsEvents } from '../utils/analytics';
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6', '#ec4899'];
+// COLORS используется для закомментированных графиков, пока оставляем
+// const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6', '#ec4899'];
 
 export const Dashboard: React.FC = () => {
   const { t, language, translate } = useTranslation();
@@ -38,7 +39,7 @@ export const Dashboard: React.FC = () => {
   const moviesCount = allMovies?.length || 0;
   
   // Get popular movies when user has no movies (if enabled in config)
-  const { isLoading: popularLoading } = useQuery(
+  useQuery(
     ['popular-movies', language, config.recommendationType, config.gems],
     () => {
       const params: any = {
@@ -98,7 +99,7 @@ export const Dashboard: React.FC = () => {
     { enabled: showStatistics }
   );
 
-  const { data: emotionStats, isLoading: emotionLoading } = useQuery(
+  const { isLoading: emotionLoading } = useQuery(
     'emotion-stats',
     () => api.get('/emotions/stats/overview').then(res => res.data),
     { enabled: showStatistics }
