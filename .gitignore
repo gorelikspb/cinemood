@@ -51,3 +51,6 @@ HOW_TO_GET_EMAILS.md
 HOW_TO_GET_EMAILS_PRIVATE.md
 PRIVATE_*.md
 
+
+# Local Netlify folder
+.netlify
