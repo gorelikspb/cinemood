@@ -259,6 +259,11 @@ router.get('/search', async (req, res) => {
     const { query, page = 1, language = 'en-US' } = req.query;
     
     console.log('🔍 Search request received:', { query, page, language });
+    console.log('🔑 TMDB_API_KEY check:', {
+      exists: !!TMDB_API_KEY,
+      isPlaceholder: TMDB_API_KEY === 'your_tmdb_api_key_here',
+      length: TMDB_API_KEY?.length || 0
+    });
     
     if (!query) {
       console.log('❌ No query provided');
@@ -266,9 +271,13 @@ router.get('/search', async (req, res) => {
     }
 
     // Check if TMDB API key is configured
-    if (!TMDB_API_KEY || TMDB_API_KEY === 'your_tmdb_api_key_here') {
+    if (!TMDB_API_KEY || TMDB_API_KEY === 'your_tmdb_api_key_here' || !TMDB_API_KEY.trim()) {
       console.log('❌ TMDB API key not configured');
-      return res.status(500).json({ error: 'TMDB API key not configured' });
+      console.log('❌ TMDB_API_KEY value:', TMDB_API_KEY || 'undefined');
+      return res.status(500).json({ 
+        error: 'TMDB API key not configured',
+        details: 'Please set TMDB_API_KEY environment variable in Railway'
+      });
     }
 
     console.log('🌐 Making request to TMDB API with language:', language);
