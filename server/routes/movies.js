@@ -382,7 +382,7 @@ router.get('/recommendations/similar', async (req, res) => {
           const similarMovies = response.data.results || [];
           
           // Add each similar movie to the map (avoiding duplicates and user's own movies)
-          similarMovies.forEach((movie: any) => {
+          similarMovies.forEach((movie) => {
             if (!seenTmdbIds.has(movie.id)) {
               seenTmdbIds.add(movie.id);
               similarMoviesMap.set(movie.id, movie);
