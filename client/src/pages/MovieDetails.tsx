@@ -171,7 +171,7 @@ export const MovieDetails: React.FC = () => {
   const prevValuesRef = React.useRef<any>(null);
 
   // Мемоизируем handleSave чтобы избежать лишних пересозданий
-  const handleSave = React.useCallback(async () => {
+  const handleSave = React.useCallback(async (shouldNavigate: boolean = false) => {
     if (!id || !movie) return; // Не сохраняем если нет данных фильма
 
     try {
@@ -185,7 +185,8 @@ export const MovieDetails: React.FC = () => {
         watchedDate: prevValuesRef.current?.watchedDate !== movieForm.watchedDate,
         emotions: currentEmotions !== prevEmotions,
         currentEmotions,
-        prevEmotions
+        prevEmotions,
+        shouldNavigate
       });
       
       const hasChanges = 
@@ -195,9 +196,12 @@ export const MovieDetails: React.FC = () => {
         currentEmotions !== prevEmotions;
 
       if (!hasChanges && prevValuesRef.current) {
-        console.log('⏭️ No changes detected, but navigating back anyway');
-        // Все равно возвращаемся на предыдущую страницу, даже если изменений нет
-        navigate(fromPath);
+        console.log('⏭️ No changes detected');
+        // Если это вызов по кнопке "Сохранить", переходим назад даже без изменений
+        if (shouldNavigate) {
+          console.log('➡️ Navigating back because save button was clicked');
+          navigate(fromPath);
+        }
         return;
       }
 
@@ -260,8 +264,10 @@ export const MovieDetails: React.FC = () => {
       // Инвалидируем только список фильмов (для других страниц)
       queryClient.invalidateQueries('movies');
       
-      // Возвращаемся на страницу, откуда пришел пользователь
-      navigate(fromPath);
+      // Возвращаемся на страницу только если это вызов по кнопке "Сохранить"
+      if (shouldNavigate) {
+        navigate(fromPath);
+      }
     } catch (error) {
       console.error('❌ Failed to save movie and emotions:', error);
     }
@@ -476,7 +482,7 @@ export const MovieDetails: React.FC = () => {
         {/* Explicit Save Button */}
         <div className="mt-4">
           <button
-            onClick={() => handleSave()}
+            onClick={() => handleSave(true)}
             className={STYLES.buttonPrimary}
           >
             {t.save}
