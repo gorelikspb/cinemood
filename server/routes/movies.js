@@ -327,6 +327,90 @@ router.get('/search', async (req, res) => {
 });
 
 // Get recommended movies
+// Get similar movies based on user's diary movies (sorted by rating descending)
+router.get('/recommendations/similar', async (req, res) => {
+  try {
+    const { language = 'en-US', limit = 50 } = req.query;
+    
+    if (!TMDB_API_KEY || TMDB_API_KEY === 'your_tmdb_api_key_here') {
+      return res.status(500).json({ error: 'TMDB API key not configured' });
+    }
+
+    // Get user's movies sorted by rating (descending), limit to top 10 rated movies
+    const sql = `
+      SELECT tmdb_id, user_rating 
+      FROM movies 
+      WHERE tmdb_id IS NOT NULL AND user_rating IS NOT NULL
+      ORDER BY user_rating DESC, id DESC
+      LIMIT 10
+    `;
+    
+    db.all(sql, [], async (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch movies' });
+      }
+
+      if (!rows || rows.length === 0) {
+        return res.json({ results: [], empty: true });
+      }
+
+      console.log(`📊 Found ${rows.length} movies in diary for recommendations`);
+
+      // Get similar movies for each movie
+      const similarMoviesMap = new Map(); // Use Map to avoid duplicates by tmdb_id
+      const seenTmdbIds = new Set(); // Track which movies we've already processed
+
+      // First, add all user's movies to seenTmdbIds to exclude them from recommendations
+      rows.forEach(row => {
+        seenTmdbIds.add(row.tmdb_id);
+      });
+
+      // Fetch similar movies for each movie (limit to top 5-10 rated movies for performance)
+      const topMovies = rows.slice(0, 5); // Use top 5 rated movies
+      
+      for (const row of topMovies) {
+        try {
+          const response = await axios.get(`${TMDB_BASE_URL}/movie/${row.tmdb_id}/recommendations`, {
+            params: {
+              api_key: TMDB_API_KEY,
+              language: language,
+              page: 1
+            }
+          });
+
+          const similarMovies = response.data.results || [];
+          
+          // Add each similar movie to the map (avoiding duplicates and user's own movies)
+          similarMovies.forEach((movie: any) => {
+            if (!seenTmdbIds.has(movie.id)) {
+              seenTmdbIds.add(movie.id);
+              similarMoviesMap.set(movie.id, movie);
+            }
+          });
+        } catch (error) {
+          console.error(`Error fetching similar movies for tmdb_id ${row.tmdb_id}:`, error.message);
+          // Continue with other movies even if one fails
+        }
+      }
+
+      // Convert map to array and limit results
+      const recommendations = Array.from(similarMoviesMap.values()).slice(0, parseInt(limit) || 50);
+      
+      console.log(`✅ Returning ${recommendations.length} unique recommendations`);
+      
+      res.json({ 
+        results: recommendations,
+        empty: false,
+        sourceMoviesCount: rows.length
+      });
+    });
+  } catch (error) {
+    console.error('Similar recommendations error:', error);
+    res.status(500).json({ error: 'Failed to get similar recommendations' });
+  }
+});
+
 router.get('/:id/similar', async (req, res) => {
   try {
     const { id } = req.params;

@@ -1,89 +1,42 @@
 import React from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from '../contexts/LanguageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { config } from '../config';
 import { STYLES } from '../constants/styles';
-import { logger } from '../utils/logger';
 import { getGenresFromIds } from '../utils/movieUtils';
+import { Plus } from 'lucide-react';
 
 /**
  * 🎬 Страница рекомендаций
  * 
- * Использует простую систему рекомендаций:
- * - 'gems' - скрытые жемчужины (хороший рейтинг, но не слишком популярные)
- * - 'popular' - популярные фильмы прямо сейчас
- * - 'trend' - трендовые фильмы за неделю
- * 
- * Настройка типа: client/src/config.ts (recommendationType)
+ * Показывает похожие фильмы к тем, что добавлены в дневнике (по убыванию оценки).
+ * Если фильмов нет в дневнике, показывает сообщение с предложением добавить фильмы.
  */
 const Recommendations: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
 
-  // Fetch recommendations based on config.recommendationType
-  const { data: movies, isLoading, error } = useQuery(
-    ['recommendations', config.recommendationType, config.gems], // Убрали language из ключа, т.к. всегда используем 'en'
+  // Fetch similar movies based on user's diary movies
+  const { data: recommendationsData, isLoading, error } = useQuery(
+    ['recommendations-similar', language],
     () => {
-      const params = new URLSearchParams({
-        type: config.recommendationType,
-        language: 'en' // Всегда используем английский для одинаковых рекомендаций
-      });
-      // Передаем настройки gems если выбран этот тип
-      if (config.recommendationType === 'gems') {
-        params.append('minRating', config.gems.minRating.toString());
-        params.append('minVoteCount', config.gems.minVoteCount.toString());
-        params.append('maxVoteCount', config.gems.maxVoteCount.toString());
-        params.append('minReleaseDate', config.gems.minReleaseDate);
-        params.append('requireRussianTitle', config.gems.requireRussianTitle.toString());
-        params.append('excludeGenres', config.gems.excludeGenres.join(','));
-      }
-      return api.get(`/movies/popular?${params}`).then(res => {
-        let movies = res.data.results || [];
-        
-        // КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ: исключаем фильмы с нежелательными жанрами
-        if (config.recommendationType === 'gems' && config.gems.excludeGenres.length > 0) {
-          const genreIdToName: { [key: number]: string } = {
-            28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
-            99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
-            27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
-            878: 'Science Fiction', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western'
-          };
-          
-          const excludeGenreIds = config.gems.excludeGenres
-            .map(name => {
-              const entry = Object.entries(genreIdToName).find(([_, n]) => n === name);
-              return entry ? parseInt(entry[0]) : null;
-            })
-            .filter(id => id !== null) as number[];
-          
-          const beforeFilter = movies.length;
-          movies = movies.filter((movie: any) => {
-            if (!movie.genre_ids || !Array.isArray(movie.genre_ids)) {
-              return true; // Оставляем, если нет информации о жанрах
-            }
-            // Исключаем, если есть хотя бы один исключенный жанр
-            const hasExcludedGenre = movie.genre_ids.some((id: number) => excludeGenreIds.includes(id));
-            return !hasExcludedGenre;
-          });
-          
-          if (beforeFilter !== movies.length) {
-            console.log(`🔍 Client filter: ${beforeFilter} → ${movies.length} movies (removed ${beforeFilter - movies.length} with excluded genres)`);
-          }
+      return api.get('/movies/recommendations/similar', {
+        params: {
+          language: language === 'ru' ? 'ru-RU' : 'en-US',
+          limit: 50
         }
-        
-        // Логируем рекомендации в консоль браузера с информацией об исключенных жанрах
-        const excludeGenres = config.recommendationType === 'gems' ? config.gems.excludeGenres : undefined;
-        logger.recommendationsLoaded(config.recommendationType, movies, excludeGenres);
-        return movies;
-      });
+      }).then(res => res.data);
     },
     {
       enabled: config.showRecommendations,
       staleTime: 30 * 60 * 1000, // Cache for 30 minutes
     }
   );
+
+  const movies = recommendationsData?.results || [];
+  const isEmpty = recommendationsData?.empty === true;
 
   const handleMovieClick = (tmdbId: number) => {
     navigate(`/movie-tmdb/${tmdbId}`);
@@ -122,47 +75,68 @@ const Recommendations: React.FC = () => {
     );
   }
 
+  // Empty state: no movies in diary
+  if (isEmpty) {
+    return (
+      <div className={STYLES.page}>
+        <div className={`${STYLES.card} text-center`}>
+          <div className="max-w-2xl mx-auto py-8">
+            <div className="text-5xl mb-4">🎬</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">{t.recommendations || 'Recommendations'}</h1>
+            <p className={`${STYLES.textBody} mb-6 text-gray-700`}>
+              {t.addMoviesForRecommendations || 'Add movies to your diary to get personalized recommendations based on films you enjoyed.'}
+            </p>
+            <Link to="/add-movie" className={`${STYLES.buttonPrimary} inline-flex items-center`}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t.addFirstMovie || 'Add your first movie'}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={STYLES.page}>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">{t.recommendations || 'Recommendations'}</h1>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {movies?.map((movie: any) => (
-          <div
-            key={movie.id}
-            onClick={() => handleMovieClick(movie.id)}
-            className="cursor-pointer group"
-          >
-            <div className="aspect-[2/3] overflow-hidden rounded-lg mb-2 bg-gray-200">
-              {movie.poster_path ? (
-                <img
-                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                  alt={movie.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-gray-400 text-xs">No poster</span>
+      {movies.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {movies.map((movie: any) => (
+            <div
+              key={movie.id}
+              onClick={() => handleMovieClick(movie.id)}
+              className="cursor-pointer group"
+            >
+              <div className="aspect-[2/3] overflow-hidden rounded-lg mb-2 bg-gray-200">
+                {movie.poster_path ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                    alt={movie.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-gray-400 text-xs">No poster</span>
+                  </div>
+                )}
+              </div>
+              {/* Жанры */}
+              {movie.genre_ids && movie.genre_ids.length > 0 && (
+                <div className="mb-1 flex items-center justify-center gap-1 flex-wrap">
+                  {getGenresFromIds(movie.genre_ids, 2).map((genre, idx) => (
+                    <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                      {genre}
+                    </span>
+                  ))}
                 </div>
               )}
+              <h3 className="text-sm font-medium text-gray-900 truncate">{movie.title}</h3>
+              <p className="text-xs text-gray-500">{new Date(movie.release_date).getFullYear()}</p>
             </div>
-            {/* Жанры */}
-            {movie.genre_ids && movie.genre_ids.length > 0 && (
-              <div className="mb-1 flex items-center justify-center gap-1 flex-wrap">
-                {getGenresFromIds(movie.genre_ids, 2).map((genre, idx) => (
-                  <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
-                    {genre}
-                  </span>
-                ))}
-              </div>
-            )}
-            <h3 className="text-sm font-medium text-gray-900 truncate">{movie.title}</h3>
-            <p className="text-xs text-gray-500">{new Date(movie.release_date).getFullYear()}</p>
-          </div>
-        ))}
-      </div>
-
-      {(!movies || movies.length === 0) && (
+          ))}
+        </div>
+      ) : (
         <div className="text-center py-12">
           <p className="text-gray-600">{t.noRecommendationsAvailable || 'No recommendations available.'}</p>
         </div>

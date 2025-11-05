@@ -144,6 +144,7 @@ interface Translations {
   recommendationsDisabled: string;
   errorLoading: string;
   noRecommendationsAvailable: string;
+  addMoviesForRecommendations: string;
   vote: string;
   votes: string;
   noPoster: string;
@@ -355,6 +356,7 @@ const translations: Record<Language, Translations> = {
     recommendationsDisabled: 'Recommendations are currently disabled.',
     errorLoading: 'Failed to load recommendations.',
     noRecommendationsAvailable: 'No recommendations available.',
+    addMoviesForRecommendations: 'Add movies to your diary to get personalized recommendations based on films you enjoyed.',
     vote: 'vote',
     votes: 'votes',
     noPoster: 'No poster', // unused
@@ -565,6 +567,7 @@ const translations: Record<Language, Translations> = {
     recommendationsDisabled: 'Рекомендации сейчас отключены.',
     errorLoading: 'Не удалось загрузить рекомендации.',
     noRecommendationsAvailable: 'Рекомендации недоступны.',
+    addMoviesForRecommendations: 'Добавьте фильмы в дневник, чтобы получить персональные рекомендации на основе понравившихся вам фильмов.',
     vote: 'оценка',
     votes: 'оценок',
     noPoster: 'Нет постера', // unused
