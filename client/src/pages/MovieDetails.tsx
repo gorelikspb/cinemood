@@ -319,18 +319,6 @@ export const MovieDetails: React.FC = () => {
   // Это гарантирует, что эмоции загружаются правильно из базы данных
 
   // Auto-save on change (with debounce) - только если данные фильма загружены
-  useEffect(() => {
-    if (!movie || isLoading) return; // Не сохраняем пока данные не загружены
-    if (!prevValuesRef.current) return; // Не сохраняем пока не инициализированы предыдущие значения
-
-    const timeoutId = setTimeout(() => {
-      handleSave();
-    }, 3000); // Увеличиваем задержку до 3 секунд чтобы уменьшить количество запросов
-
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movieForm.userRating, movieForm.notes, JSON.stringify(movieForm.emotions.map(e => e.type).sort()), movieForm.emotionDescription, movieForm.watchedDate]);
-
   const handleDeleteMovie = () => {
     if (window.confirm(t.confirmDelete)) {
       deleteMovieMutation.mutate();
