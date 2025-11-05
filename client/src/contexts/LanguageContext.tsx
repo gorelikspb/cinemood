@@ -145,6 +145,9 @@ interface Translations {
   errorLoading: string;
   noRecommendationsAvailable: string;
   addMoviesForRecommendations: string;
+  recommendationsBasedOnRatings: string;
+  wantMoreAccurateRecommendations: string;
+  addMoviesToDiary: string;
   vote: string;
   votes: string;
   noPoster: string;
@@ -357,6 +360,9 @@ const translations: Record<Language, Translations> = {
     errorLoading: 'Failed to load recommendations.',
     noRecommendationsAvailable: 'No recommendations available.',
     addMoviesForRecommendations: 'Add movies to your diary to get personalized recommendations based on films you enjoyed.',
+    recommendationsBasedOnRatings: 'Recommendations based on your ratings',
+    wantMoreAccurateRecommendations: 'Want more accurate recommendations?',
+    addMoviesToDiary: 'Add movies to your diary',
     vote: 'vote',
     votes: 'votes',
     noPoster: 'No poster', // unused
@@ -568,6 +574,9 @@ const translations: Record<Language, Translations> = {
     errorLoading: 'Не удалось загрузить рекомендации.',
     noRecommendationsAvailable: 'Рекомендации недоступны.',
     addMoviesForRecommendations: 'Добавьте фильмы в дневник, чтобы получить персональные рекомендации на основе понравившихся вам фильмов.',
+    recommendationsBasedOnRatings: 'Рекомендации основанные на ваших оценках',
+    wantMoreAccurateRecommendations: 'Хотите более точных рекомендаций?',
+    addMoviesToDiary: 'Добавьте фильмы в свой дневник',
     vote: 'оценка',
     votes: 'оценок',
     noPoster: 'Нет постера', // unused

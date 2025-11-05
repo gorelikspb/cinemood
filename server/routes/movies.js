@@ -330,19 +330,18 @@ router.get('/search', async (req, res) => {
 // Get similar movies based on user's diary movies (sorted by rating descending)
 router.get('/recommendations/similar', async (req, res) => {
   try {
-    const { language = 'en-US', limit = 50 } = req.query;
+    const { language = 'en-US' } = req.query;
     
     if (!TMDB_API_KEY || TMDB_API_KEY === 'your_tmdb_api_key_here') {
       return res.status(500).json({ error: 'TMDB API key not configured' });
     }
 
-    // Get user's movies sorted by rating (descending), limit to top 10 rated movies
+    // Get user's movies with rating 6+ sorted by rating (descending)
     const sql = `
       SELECT tmdb_id, user_rating 
       FROM movies 
-      WHERE tmdb_id IS NOT NULL AND user_rating IS NOT NULL
+      WHERE tmdb_id IS NOT NULL AND user_rating IS NOT NULL AND user_rating >= 6
       ORDER BY user_rating DESC, id DESC
-      LIMIT 10
     `;
     
     db.all(sql, [], async (err, rows) => {
@@ -355,7 +354,7 @@ router.get('/recommendations/similar', async (req, res) => {
         return res.json({ results: [], empty: true });
       }
 
-      console.log(`📊 Found ${rows.length} movies in diary for recommendations`);
+      console.log(`📊 Found ${rows.length} movies in diary (rating >= 6) for recommendations`);
 
       // Get similar movies for each movie
       const similarMoviesMap = new Map(); // Use Map to avoid duplicates by tmdb_id
@@ -366,10 +365,28 @@ router.get('/recommendations/similar', async (req, res) => {
         seenTmdbIds.add(row.tmdb_id);
       });
 
-      // Fetch similar movies for each movie (limit to top 5-10 rated movies for performance)
-      const topMovies = rows.slice(0, 5); // Use top 5 rated movies
+      // Shuffle movies array for randomness
+      const shuffledMovies = [...rows].sort(() => Math.random() - 0.5);
       
-      for (const row of topMovies) {
+      // Mix: top rated movies + some random from 6+ rated movies
+      const topRatedMovies = rows.slice(0, 3); // Top 3 rated
+      const randomMovies = shuffledMovies.filter(m => m.user_rating >= 6 && m.user_rating < 10).slice(0, 2); // 2 random from 6-9 rated
+      const moviesToProcess = [...topRatedMovies, ...randomMovies];
+      
+      // Remove duplicates
+      const uniqueMoviesToProcess = [];
+      const seen = new Set();
+      for (const movie of moviesToProcess) {
+        if (!seen.has(movie.tmdb_id)) {
+          seen.add(movie.tmdb_id);
+          uniqueMoviesToProcess.push(movie);
+        }
+      }
+
+      console.log(`🎲 Processing ${uniqueMoviesToProcess.length} movies for recommendations (mix of top-rated and random)`);
+
+      // Fetch similar movies for selected movies
+      for (const row of uniqueMoviesToProcess) {
         try {
           const response = await axios.get(`${TMDB_BASE_URL}/movie/${row.tmdb_id}/recommendations`, {
             params: {
@@ -394,10 +411,48 @@ router.get('/recommendations/similar', async (req, res) => {
         }
       }
 
-      // Convert map to array and limit results
-      const recommendations = Array.from(similarMoviesMap.values()).slice(0, parseInt(limit) || 50);
+      // Get 1-2 hidden gems
+      try {
+        const gemsResponse = await axios.get(`${TMDB_BASE_URL}/discover/movie`, {
+          params: {
+            api_key: TMDB_API_KEY,
+            language: language,
+            sort_by: 'vote_average.desc',
+            'vote_average.gte': 7.0,
+            'vote_count.gte': 100,
+            'vote_count.lte': 1000,
+            'release_date.gte': '2010-01-01',
+            page: Math.floor(Math.random() * 5) + 1
+          }
+        });
+
+        const gems = gemsResponse.data.results || [];
+        let gemsAdded = 0;
+        for (const gem of gems) {
+          if (gemsAdded >= 2) break;
+          if (!seenTmdbIds.has(gem.id)) {
+            seenTmdbIds.add(gem.id);
+            similarMoviesMap.set(gem.id, gem);
+            gemsAdded++;
+          }
+        }
+        console.log(`💎 Added ${gemsAdded} hidden gems to recommendations`);
+      } catch (error) {
+        console.error('Error fetching hidden gems:', error.message);
+      }
+
+      // Convert map to array and shuffle for randomness
+      let recommendations = Array.from(similarMoviesMap.values());
       
-      console.log(`✅ Returning ${recommendations.length} unique recommendations`);
+      // Shuffle recommendations
+      recommendations = recommendations.sort(() => Math.random() - 0.5);
+      
+      // Apply limits: min 5, max 15 or diary movies count (whichever is smaller)
+      const maxLimit = Math.min(15, rows.length);
+      const finalLimit = Math.max(5, Math.min(recommendations.length, maxLimit));
+      recommendations = recommendations.slice(0, finalLimit);
+      
+      console.log(`✅ Returning ${recommendations.length} unique recommendations (limit: ${finalLimit})`);
       
       res.json({ 
         results: recommendations,
