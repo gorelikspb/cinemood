@@ -170,40 +170,11 @@ export const MovieDetails: React.FC = () => {
   // Сохраняем предыдущие значения для сравнения
   const prevValuesRef = React.useRef<any>(null);
 
-  // Мемоизируем handleSave чтобы избежать лишних пересозданий
-  const handleSave = React.useCallback(async (shouldNavigate: boolean = false) => {
+  // Мемоизируем handleSave - просто сохраняет и переходит назад
+  const handleSave = React.useCallback(async () => {
     if (!id || !movie) return; // Не сохраняем если нет данных фильма
 
     try {
-      // Проверяем, изменилось ли что-то
-      const currentEmotions = movieForm.emotions.map(e => e.type).sort().join(',');
-      const prevEmotions = prevValuesRef.current?.emotions?.map((e: any) => e.type).sort().join(',') || '';
-      
-      console.log('🔍 Checking for changes:', {
-        userRating: prevValuesRef.current?.userRating !== movieForm.userRating,
-        notes: prevValuesRef.current?.notes !== movieForm.notes,
-        watchedDate: prevValuesRef.current?.watchedDate !== movieForm.watchedDate,
-        emotions: currentEmotions !== prevEmotions,
-        currentEmotions,
-        prevEmotions,
-        shouldNavigate
-      });
-      
-      const hasChanges = 
-        prevValuesRef.current?.userRating !== movieForm.userRating ||
-        prevValuesRef.current?.notes !== movieForm.notes ||
-        prevValuesRef.current?.watchedDate !== movieForm.watchedDate ||
-        currentEmotions !== prevEmotions;
-
-      if (!hasChanges && prevValuesRef.current) {
-        console.log('⏭️ No changes detected');
-        // Если это вызов по кнопке "Сохранить", переходим назад даже без изменений
-        if (shouldNavigate) {
-          console.log('➡️ Navigating back because save button was clicked');
-          navigate(fromPath);
-        }
-        return;
-      }
 
       console.log('💾 Saving movie and emotions:', {
         movieId: id,
@@ -264,10 +235,8 @@ export const MovieDetails: React.FC = () => {
       // Инвалидируем только список фильмов (для других страниц)
       queryClient.invalidateQueries('movies');
       
-      // Возвращаемся на страницу только если это вызов по кнопке "Сохранить"
-      if (shouldNavigate) {
-        navigate(fromPath);
-      }
+      // Возвращаемся на страницу, откуда пришел пользователь
+      navigate(fromPath);
     } catch (error) {
       console.error('❌ Failed to save movie and emotions:', error);
     }
@@ -482,7 +451,7 @@ export const MovieDetails: React.FC = () => {
         {/* Explicit Save Button */}
         <div className="mt-4">
           <button
-            onClick={() => handleSave(true)}
+            onClick={handleSave}
             className={STYLES.buttonPrimary}
           >
             {t.save}
