@@ -2,7 +2,9 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = path.join(__dirname, 'database.sqlite');
+// Use persistent volume if available, otherwise use local directory
+// Railway Persistent Volume should be mounted at /data
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'database.sqlite');
 
 // Проверяем существование директории
 const dbDir = path.dirname(dbPath);
@@ -13,6 +15,7 @@ if (!fs.existsSync(dbDir)) {
 console.log('📁 Database path:', dbPath);
 console.log('📁 Database directory exists:', fs.existsSync(dbDir));
 console.log('📁 Database file exists:', fs.existsSync(dbPath));
+console.log('📁 DATABASE_PATH env:', process.env.DATABASE_PATH || 'not set (using default)');
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {

@@ -157,18 +157,16 @@ const Recommendations: React.FC = () => {
             ))}
           </div>
           
-          {/* Message after 6 recommendations */}
-          {movies.length >= 6 && (
-            <div className={`${STYLES.card} mt-8 text-center`}>
-              <p className={`${STYLES.textBody} mb-4 text-gray-700`}>
-                {t.wantMoreAccurateRecommendations || 'Want more accurate recommendations?'}
-              </p>
-              <Link to="/add-movie" className={`${STYLES.buttonSecondary} inline-flex items-center`}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t.addMoviesToDiary || 'Add movies to your diary'}
-              </Link>
-            </div>
-          )}
+          {/* Message to add more movies - always shown */}
+          <div className={`${STYLES.card} mt-8 text-center`}>
+            <p className={`${STYLES.textBody} mb-4 text-gray-700`}>
+              {t.wantMoreAccurateRecommendations || 'Want more accurate recommendations?'}
+            </p>
+            <Link to="/add-movie" className={`${STYLES.buttonSecondary} inline-flex items-center`}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t.addMoviesToDiary || 'Add movies to your diary'}
+            </Link>
+          </div>
         </>
       ) : (
         <div className="text-center py-12">
