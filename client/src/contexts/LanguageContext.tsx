@@ -497,8 +497,8 @@ const translations: Record<Language, Translations> = {
     addedEmotions: 'Добавленные эмоции:',
     addMovieToDiary: 'Добавить фильм в дневник',
     addingMovie: 'Добавление фильма...',
-    addToWatchlist: 'Добавить в список',
-    addedToWatchlist: 'Добавлено в список',
+    addToWatchlist: 'Добавить в watchlist',
+    addedToWatchlist: 'Добавлено в watchlist',
     
     // Movie Details
     movieInformation: 'Информация о фильме',
@@ -522,7 +522,7 @@ const translations: Record<Language, Translations> = {
     unknown: 'Неизвестно',
     nA: 'Н/Д',
     ifYouEnjoyedThisMovie: 'Если вам понравился этот фильм, вам также может понравиться...',
-    addToWatchlistArrow: 'Добавить в список →',
+    addToWatchlistArrow: 'Добавить в watchlist →',
     releaseDateLabel: 'Дата выхода:',
     runtimeLabel: 'Продолжительность:',
     genresLabel: 'Жанры:',
