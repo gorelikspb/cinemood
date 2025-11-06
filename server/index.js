@@ -9,6 +9,7 @@ const emotionRoutes = require('./routes/emotions');
 const statsRoutes = require('./routes/stats');
 const emailRoutes = require('./routes/emails');
 const feedbackRoutes = require('./routes/feedback');
+const extractUserId = require('./middleware/userId');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -79,6 +80,9 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+// User ID extraction middleware (должен быть перед маршрутами)
+app.use(extractUserId);
 
 // Body parsing middleware
 app.use(express.json());

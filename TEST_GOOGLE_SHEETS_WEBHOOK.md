@@ -75,7 +75,7 @@ $body = @{
     screenHeight = 1080
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri "ВАШ_URL_С_/exec" -Method Post -Body $body -ContentType "application/json"
+Invoke-RestMethod -Uri "https://script.google.com/macros/s/AKfycbyHanI04ZzzSrrx7LPSitayQbfKM_yQGcr6BzG98cybcIWPRt9The3JtjBfMGYvrFBH/exec" -Method Post -Body $body -ContentType "application/json"
 ```
 
 **Для bash/Linux/Mac:**

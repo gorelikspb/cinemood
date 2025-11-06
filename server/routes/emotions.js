@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/', (req, res) => {
   try {
     const { movie_id, emotion_type, intensity, description } = req.body;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
     if (!movie_id || !emotion_type || !intensity) {
       return res.status(400).json({ 
@@ -20,20 +21,32 @@ router.post('/', (req, res) => {
       });
     }
 
-    const sql = `
-      INSERT INTO emotions (movie_id, emotion_type, intensity, description)
-      VALUES (?, ?, ?, ?)
-    `;
-
-    db.run(sql, [movie_id, emotion_type, intensity, description], function(err) {
+    // Проверяем, что фильм принадлежит пользователю
+    db.get('SELECT id FROM movies WHERE id = ? AND user_id = ?', [movie_id, userId], (err, movie) => {
       if (err) {
         console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to add emotion' });
+        return res.status(500).json({ error: 'Failed to verify movie ownership' });
+      }
+      
+      if (!movie) {
+        return res.status(404).json({ error: 'Movie not found or does not belong to you' });
       }
 
-      res.json({ 
-        id: this.lastID, 
-        message: 'Emotion added successfully' 
+      const sql = `
+        INSERT INTO emotions (user_id, movie_id, emotion_type, intensity, description)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+
+      db.run(sql, [userId, movie_id, emotion_type, intensity, description], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Failed to add emotion' });
+        }
+
+        res.json({ 
+          id: this.lastID, 
+          message: 'Emotion added successfully' 
+        });
       });
     });
   } catch (error) {
@@ -46,14 +59,15 @@ router.post('/', (req, res) => {
 router.get('/movie/:movieId', (req, res) => {
   try {
     const { movieId } = req.params;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
     const sql = `
       SELECT * FROM emotions 
-      WHERE movie_id = ? 
+      WHERE movie_id = ? AND user_id = ?
       ORDER BY created_at DESC
     `;
 
-    db.all(sql, [movieId], (err, rows) => {
+    db.all(sql, [movieId, userId], (err, rows) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch emotions' });
@@ -71,17 +85,19 @@ router.get('/movie/:movieId', (req, res) => {
 router.get('/', (req, res) => {
   try {
     const { emotion_type, limit = 50 } = req.query;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
     let sql = `
       SELECT e.*, m.title, m.poster_path, m.watched_date
       FROM emotions e
       JOIN movies m ON e.movie_id = m.id
+      WHERE e.user_id = ? AND m.user_id = ?
     `;
     
-    const params = [];
+    const params = [userId, userId];
     
     if (emotion_type) {
-      sql += ' WHERE e.emotion_type = ?';
+      sql += ' AND e.emotion_type = ?';
       params.push(emotion_type);
     }
     
@@ -107,6 +123,7 @@ router.put('/:id', (req, res) => {
   try {
     const { id } = req.params;
     const { emotion_type, intensity, description } = req.body;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
     if (intensity && (intensity < 1 || intensity > 10)) {
       return res.status(400).json({ 
@@ -117,10 +134,10 @@ router.put('/:id', (req, res) => {
     const sql = `
       UPDATE emotions 
       SET emotion_type = ?, intensity = ?, description = ?
-      WHERE id = ?
+      WHERE id = ? AND user_id = ?
     `;
 
-    db.run(sql, [emotion_type, intensity, description, id], function(err) {
+    db.run(sql, [emotion_type, intensity, description, id, userId], function(err) {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to update emotion' });
@@ -142,18 +159,31 @@ router.put('/:id', (req, res) => {
 router.delete('/movie/:movieId', (req, res) => {
   try {
     const { movieId } = req.params;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
-    const sql = 'DELETE FROM emotions WHERE movie_id = ?';
-
-    db.run(sql, [movieId], function(err) {
+    // Проверяем, что фильм принадлежит пользователю
+    db.get('SELECT id FROM movies WHERE id = ? AND user_id = ?', [movieId, userId], (err, movie) => {
       if (err) {
         console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to delete emotions' });
+        return res.status(500).json({ error: 'Failed to verify movie ownership' });
+      }
+      
+      if (!movie) {
+        return res.status(404).json({ error: 'Movie not found or does not belong to you' });
       }
 
-      res.json({ 
-        message: 'Emotions deleted successfully',
-        deletedCount: this.changes
+      const sql = 'DELETE FROM emotions WHERE movie_id = ? AND user_id = ?';
+
+      db.run(sql, [movieId, userId], function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Failed to delete emotions' });
+        }
+
+        res.json({ 
+          message: 'Emotions deleted successfully',
+          deletedCount: this.changes
+        });
       });
     });
   } catch (error) {
@@ -166,10 +196,11 @@ router.delete('/movie/:movieId', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
-    const sql = 'DELETE FROM emotions WHERE id = ?';
+    const sql = 'DELETE FROM emotions WHERE id = ? AND user_id = ?';
 
-    db.run(sql, [id], function(err) {
+    db.run(sql, [id, userId], function(err) {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to delete emotion' });
@@ -190,6 +221,8 @@ router.delete('/:id', (req, res) => {
 // Get emotion statistics
 router.get('/stats/overview', (req, res) => {
   try {
+    const userId = req.userId; // Извлекаем user_id из middleware
+    
     const sql = `
       SELECT 
         emotion_type,
@@ -198,11 +231,12 @@ router.get('/stats/overview', (req, res) => {
         MAX(intensity) as max_intensity,
         MIN(intensity) as min_intensity
       FROM emotions 
+      WHERE user_id = ?
       GROUP BY emotion_type
       ORDER BY count DESC
     `;
 
-    db.all(sql, [], (err, rows) => {
+    db.all(sql, [userId], (err, rows) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch emotion stats' });

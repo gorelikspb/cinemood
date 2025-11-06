@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getUserId } from '../utils/userId';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -21,6 +22,11 @@ api.interceptors.request.use(
     console.log(`🚀 Making ${config.method?.toUpperCase()} request to ${config.url}`);
     console.log('📋 Request data:', config.data);
     console.log('🔍 Request params BEFORE:', config.params);
+    
+    // Add user_id header to all requests
+    const userId = getUserId();
+    config.headers['X-User-ID'] = userId;
+    console.log('👤 Added user ID header:', userId);
     
     // Add language parameter to movie-related requests
     if (config.url?.includes('/movies/search') || config.url?.includes('/movies/details/') || config.url?.includes('/movies/popular')) {

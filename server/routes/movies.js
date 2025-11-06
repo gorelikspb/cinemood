@@ -336,25 +336,78 @@ router.get('/recommendations/similar', async (req, res) => {
       return res.status(500).json({ error: 'TMDB API key not configured' });
     }
 
-    // Get user's movies with rating 6+ sorted by rating (descending)
-    const sql = `
+    // Get user's movies for recommendations
+    // Strategy: prefer movies with rating >= 6, fallback to any rated movies, then all movies
+    const userId = req.userId; // Извлекаем user_id из middleware
+    
+    const sqlHighRated = `
       SELECT tmdb_id, user_rating 
       FROM movies 
-      WHERE tmdb_id IS NOT NULL AND user_rating IS NOT NULL AND user_rating >= 6
+      WHERE user_id = ? AND tmdb_id IS NOT NULL AND user_rating IS NOT NULL AND user_rating >= 6
       ORDER BY user_rating DESC, id DESC
     `;
     
-    db.all(sql, [], async (err, rows) => {
+    const sqlAnyRated = `
+      SELECT tmdb_id, user_rating 
+      FROM movies 
+      WHERE user_id = ? AND tmdb_id IS NOT NULL AND user_rating IS NOT NULL
+      ORDER BY user_rating DESC, id DESC
+    `;
+    
+    const sqlAllMovies = `
+      SELECT tmdb_id, user_rating 
+      FROM movies 
+      WHERE user_id = ? AND tmdb_id IS NOT NULL
+      ORDER BY COALESCE(user_rating, 0) DESC, id DESC
+    `;
+    
+    // Try to get movies with rating >= 6 first
+    db.all(sqlHighRated, [userId], async (err, rows) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch movies' });
       }
 
+      // If no high-rated movies, try any rated movies
       if (!rows || rows.length === 0) {
-        return res.json({ results: [], empty: true });
+        console.log('📊 No movies with rating >= 6, trying any rated movies...');
+        db.all(sqlAnyRated, [userId], async (err, rowsAny) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to fetch movies' });
+          }
+          
+          // If no rated movies, try all movies
+          if (!rowsAny || rowsAny.length === 0) {
+            console.log('📊 No rated movies, trying all movies in diary...');
+            db.all(sqlAllMovies, [userId], async (err, rowsAll) => {
+              if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Failed to fetch movies' });
+              }
+              
+              if (!rowsAll || rowsAll.length === 0) {
+                return res.json({ results: [], empty: true });
+              }
+              
+              console.log(`📊 Found ${rowsAll.length} movies in diary (all movies) for recommendations`);
+              await processRecommendations(rowsAll, req, res);
+            });
+          } else {
+            console.log(`📊 Found ${rowsAny.length} movies in diary (any rating) for recommendations`);
+            await processRecommendations(rowsAny, req, res);
+          }
+        });
+        return;
       }
 
       console.log(`📊 Found ${rows.length} movies in diary (rating >= 6) for recommendations`);
+      await processRecommendations(rows, req, res);
+    });
+    
+    // Extract recommendation processing logic into a function
+    async function processRecommendations(rows, req, res) {
+      const { language = 'en-US' } = req.query;
 
       // Get similar movies for each movie
       const similarMoviesMap = new Map(); // Use Map to avoid duplicates by tmdb_id
@@ -368,10 +421,21 @@ router.get('/recommendations/similar', async (req, res) => {
       // Shuffle movies array for randomness
       const shuffledMovies = [...rows].sort(() => Math.random() - 0.5);
       
-      // Mix: top rated movies + some random from 6+ rated movies
-      const topRatedMovies = rows.slice(0, 3); // Top 3 rated
-      const randomMovies = shuffledMovies.filter(m => m.user_rating >= 6 && m.user_rating < 10).slice(0, 2); // 2 random from 6-9 rated
-      const moviesToProcess = [...topRatedMovies, ...randomMovies];
+      // Mix: top rated movies + some random movies
+      // If movies have ratings >= 6, prioritize those; otherwise use all available movies
+      const hasHighRatings = rows.some(m => m.user_rating && m.user_rating >= 6);
+      let moviesToProcess;
+      
+      if (hasHighRatings) {
+        // Mix: top rated movies + some random from 6+ rated movies
+        const topRatedMovies = rows.slice(0, 3); // Top 3 rated
+        const randomMovies = shuffledMovies.filter(m => m.user_rating && m.user_rating >= 6 && m.user_rating < 10).slice(0, 2); // 2 random from 6-9 rated
+        moviesToProcess = [...topRatedMovies, ...randomMovies];
+      } else {
+        // If no high ratings, use top movies (by rating if available, or just first few)
+        const topMovies = rows.slice(0, Math.min(5, rows.length)); // Top 5 movies
+        moviesToProcess = topMovies;
+      }
       
       // Remove duplicates
       const uniqueMoviesToProcess = [];
@@ -459,7 +523,7 @@ router.get('/recommendations/similar', async (req, res) => {
         empty: false,
         sourceMoviesCount: rows.length
       });
-    });
+    }
   } catch (error) {
     console.error('Similar recommendations error:', error);
     res.status(500).json({ error: 'Failed to get similar recommendations' });
@@ -470,11 +534,12 @@ router.get('/:id/similar', async (req, res) => {
   try {
     const { id } = req.params;
     const { language = 'en-US' } = req.query;
+    const userId = req.userId; // Извлекаем user_id из middleware
     
     // Get tmdb_id from our database
-    const sql = 'SELECT tmdb_id FROM movies WHERE id = ?';
+    const sql = 'SELECT tmdb_id FROM movies WHERE id = ? AND user_id = ?';
     
-    db.get(sql, [id], async (err, row) => {
+    db.get(sql, [id, userId], async (err, row) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch movie' });
@@ -571,21 +636,36 @@ router.post('/', (req, res) => {
       notes
     } = req.body;
 
+    const userId = req.userId; // Извлекаем user_id из middleware
+
     const sql = `
       INSERT INTO movies (
-        tmdb_id, title, overview, release_date, poster_path, 
+        user_id, tmdb_id, title, overview, release_date, poster_path, 
         backdrop_path, genres, rating, runtime, watched_date, 
         user_rating, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.run(sql, [
-      tmdb_id, title, overview, release_date, poster_path,
+      userId, tmdb_id, title, overview, release_date, poster_path,
       backdrop_path, JSON.stringify(genres), rating, runtime,
       watched_date, user_rating, notes
     ], function(err) {
       if (err) {
         console.error('Database error:', err);
+        // Если ошибка из-за дубликата (UNIQUE constraint), возвращаем существующий фильм
+        if (err.message.includes('UNIQUE constraint failed')) {
+          db.get('SELECT * FROM movies WHERE user_id = ? AND tmdb_id = ?', [userId, tmdb_id], (err, row) => {
+            if (err) {
+              return res.status(500).json({ error: 'Failed to check existing movie' });
+            }
+            return res.status(409).json({ 
+              error: 'Movie already exists in your diary',
+              movie: row
+            });
+          });
+          return;
+        }
         return res.status(500).json({ error: 'Failed to add movie' });
       }
 
@@ -604,19 +684,21 @@ router.post('/', (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, sort = 'watched_date', order = 'DESC', language = 'en-US' } = req.query;
+    const userId = req.userId; // Извлекаем user_id из middleware
     const offset = (page - 1) * limit;
 
     const sql = `
       SELECT m.*, 
              GROUP_CONCAT(e.emotion_type || ':' || e.intensity) as emotions
       FROM movies m
-      LEFT JOIN emotions e ON m.id = e.movie_id
+      LEFT JOIN emotions e ON m.id = e.movie_id AND e.user_id = ?
+      WHERE m.user_id = ?
       GROUP BY m.id
       ORDER BY m.${sort} ${order}
       LIMIT ? OFFSET ?
     `;
 
-    db.all(sql, [limit, offset], async (err, rows) => {
+    db.all(sql, [userId, userId, limit, offset], async (err, rows) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch movies' });
@@ -674,17 +756,18 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { language = 'en-US' } = req.query;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
     const sql = `
       SELECT m.*, 
              GROUP_CONCAT(e.emotion_type || ':' || e.intensity || ':' || e.description) as emotions
       FROM movies m
-      LEFT JOIN emotions e ON m.id = e.movie_id
-      WHERE m.id = ?
+      LEFT JOIN emotions e ON m.id = e.movie_id AND e.user_id = ?
+      WHERE m.id = ? AND m.user_id = ?
       GROUP BY m.id
     `;
 
-    db.get(sql, [id], async (err, row) => {
+    db.get(sql, [userId, id, userId], async (err, row) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch movie' });
@@ -747,14 +830,15 @@ router.put('/:id', (req, res) => {
       notes,
       watched_date
     } = req.body;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
     const sql = `
       UPDATE movies 
       SET user_rating = ?, notes = ?, watched_date = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ? AND user_id = ?
     `;
 
-    db.run(sql, [user_rating, notes, watched_date, id], function(err) {
+    db.run(sql, [user_rating, notes, watched_date, id, userId], function(err) {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to update movie' });
@@ -776,10 +860,11 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.userId; // Извлекаем user_id из middleware
 
-    const sql = 'DELETE FROM movies WHERE id = ?';
+    const sql = 'DELETE FROM movies WHERE id = ? AND user_id = ?';
 
-    db.run(sql, [id], function(err) {
+    db.run(sql, [id, userId], function(err) {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to delete movie' });
